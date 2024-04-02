@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-interface IIQStaking {
+interface IIQNftStaking {
 
     /**
      * @dev Thrown when the address for proof verification is invalid.
@@ -54,6 +54,11 @@ interface IIQStaking {
     error StakingNotActive();
 
     /**
+     * @dev Thrown when a user attempts to withdraw nfts that are not staked.
+     */
+    error UserHasNoStakedNfts();
+
+    /**
      * @notice Thrown when an attempt is made to deposit tokens into the staking pool after tokens have already been withdrawn.
      */
     error PoolAlreadyFundedAndWithdrawn();
@@ -104,8 +109,9 @@ interface IIQStaking {
     /**
      * @dev Allows a user to stake NFTs by providing an array of token IDs.
      * @param tokenIds The array of token IDs to stake.
+     * @param signature The signature verifying the stake.
      */
-    function stake(uint256[] calldata tokenIds) external;
+    function stake(uint256[] calldata tokenIds, bytes calldata signature) external;
 
     /**
      * @dev Allows a staker to claim their reward tokens.
@@ -118,8 +124,9 @@ interface IIQStaking {
     /**
      * @dev Allows a staker to withdraw their staked NFTs by providing an array of token IDs.
      * @param tokenIds The array of token IDs to withdraw.
+     * @param signature The signature verifying the withdrawal.
      */
-    function withdraw(uint256[] calldata tokenIds) external;
+    function withdraw(uint256[] calldata tokenIds, bytes calldata signature) external;
 
     /**
      * @dev Allows the deposit of reward tokens into the pool.
