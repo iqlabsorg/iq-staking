@@ -18,9 +18,11 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
         "ReserveTokens(address reserver,uint256 nonce,uint256 amount)"
     );
 
-    enum RewardDistribution { Internal, External }
+    bytes32 private constant WITHDRAW_REWARD_TOKENS_TYPEHASH = keccak256(
+        "WithdrawRewardTokens(address withdrawer,uint256 amount,uint256 nonce)"
+    );
 
-    RewardDistribution public _rewardDistribution;
+    mapping(address => Counters.Counter) private _nonceCounters;
 
     /**
      * @dev NFT collection for staking.
@@ -58,6 +60,11 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
     uint256 private _totalTokensClaimed;
 
     /**
+     * @dev Indicates the status of staking pool.
+     */
+    bool private _stakingActive;
+
+    /**
      * @dev Indicates staked tokens by address.
      */
     mapping(address => uint256[]) private _stakedTokens;
@@ -72,11 +79,6 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
      */
     mapping(address => uint256) private _claimedTokens;
 
-    mapping(address => Counters.Counter) private _nonceCounters;
-
-
-
-
     /**
      * @dev Constructor for the ReserveTokens contract.
      * @param proofSource Address of the backend that will provide the signature for the reservation.
@@ -85,7 +87,7 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
     constructor(
         address proofSource,
         uint256 tokensPoolSize,
-        RewardDistribution rewardDistribution,
+        address rewardTokenAddress,
         address nftCollectionAddress,
         uint256 rewardRate,
         uint256 rewardFrequency
@@ -93,7 +95,7 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
         if (proofSource == address(0)) revert InvalidProofSourceAddress();
         _proofSource = proofSource;
         _poolSize = tokensPoolSize;
-        _rewardDistribution = rewardDistribution;
+        _rewardToken = IERC20(rewardTokenAddress);
         _nftCollection = IERC721(nftCollectionAddress);
         _rewardRate = rewardRate;
         _rewardFrequency = rewardFrequency;
@@ -103,9 +105,9 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
      * @inheritdoc IIQStaking
      */
     function stake(uint256[] calldata tokenIds) external nonReentrant {
+        if (!_stakingActive) revert StakingNotActive();
         for (uint i = 0; i < tokenIds.length; i++) {
-            if (_nftCollection.ownerOf(tokenIds[i]) != msg.sender) revert notTheOwnerOfNFT();
-            //if (_tokenOwners[tokenIds[i]] != address(0)) revert TokenAlreadyStaked();
+            if (_nftCollection.ownerOf(tokenIds[i]) != msg.sender) revert NotTheOwnerOfNFT();
 
             _nftCollection.transferFrom(msg.sender, address(this), tokenIds[i]);
 
@@ -140,7 +142,7 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
         _claimedTokens[staker] = amount;
         _totalTokensClaimed += amount;
 
-        emit TokensClaimed(staker, amount, block.timestamp); //do we need timestamp here?
+        emit TokensClaimed(staker, amount, block.timestamp);
     }
 
     /**
@@ -148,9 +150,9 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
      */
     function withdraw(uint256[] calldata tokenIds) external nonReentrant {
         for (uint i = 0; i < tokenIds.length; i++) {
-            if (_tokenOwners[tokenIds[i]] != msg.sender) revert notTheOwnerOfNFT();
+            if (_tokenOwners[tokenIds[i]] != msg.sender) revert NotTheOwnerOfNFT();
 
-            require(_nftCollection.ownerOf(tokenIds[i]) == address(this), "Token is not staked");
+            if (_nftCollection.ownerOf(tokenIds[i]) != address(this)) revert TokenNotStaked();
 
             _nftCollection.transferFrom(address(this), msg.sender, tokenIds[i]);
 
@@ -174,26 +176,39 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
     /**
      * @inheritdoc IIQStaking
      */
-    function setRewardTokenAddress(address rewardTokenAddress) external onlyOwner {
-        if (_rewardDistribution == RewardDistribution.External) revert  externalRewardsDisabled();
-        _rewardToken = IERC20(rewardTokenAddress);
+    function depositRewardTokens(uint256 amount) external onlyOwner {
+        if (amount != _poolSize) revert  PoolShouldBeFulfilled();
+        _rewardToken.transferFrom(msg.sender, address(this), amount);
+        _stakingActive = true;
+        emit TokensDeposited(amount, block.timestamp);
     }
 
     /**
      * @inheritdoc IIQStaking
      */
-    function depositRewardTokens(uint256 _amount) external onlyOwner {
-        if (_rewardDistribution == RewardDistribution.External) revert  externalRewardsDisabled();
-        _rewardToken.transferFrom(msg.sender, address(this), _amount);
+    function withdrawRewardTokens(uint256 amount, bytes calldata signature) external onlyOwner {
+        if (_stakingActive) revert StakingShouldBeDeactivated();
+
+        uint256 nonce = _useNonce(msg.sender);
+
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            WITHDRAW_REWARD_TOKENS_TYPEHASH,
+            msg.sender,
+            amount,
+            nonce
+        )));
+
+        require(_verifySignature(_proofSource, digest, signature));
+
+        _rewardToken.transfer(msg.sender, amount);
     }
 
     /**
      * @inheritdoc IIQStaking
-     * @notice DEVELOPMENT IN PROGRESS
      */
-    function withdrawRewardTokens(uint256 _amount) external onlyOwner {
-        if (_rewardDistribution == RewardDistribution.External) revert  externalRewardsDisabled();
-        _rewardToken.transfer(msg.sender, _amount);
+    function deactivateStaking() external onlyOwner {
+        _stakingActive = false;
+        emit StakingDeactivated(block.timestamp);
     }
 
     /**
@@ -271,6 +286,13 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
      */
     function getNftCollectionAddress() public view returns (address) {
         return address(_nftCollection);
+    }
+
+    /**
+     * @inheritdoc IIQStaking
+     */
+    function isStakingActive() public view returns (bool) {
+        return _stakingActive;
     }
 
     /**
