@@ -34,6 +34,11 @@ interface IIQStaking {
     error CantClaimZero();
 
     /**
+     * @dev Thrown when a user attempts to withdraw zero tokens.
+     */
+    error CantWithdrawZero();
+
+    /**
      * @dev Thrown when deployer tries to deposit an incomplete pool volume.
      */
     error PoolShouldBeFulfilled();
@@ -47,6 +52,11 @@ interface IIQStaking {
      * @dev Thrown when a staking-related action is attempted while staking is not active.
      */
     error StakingNotActive();
+
+    /**
+     * @notice Thrown when an attempt is made to deposit tokens into the staking pool after tokens have already been withdrawn.
+     */
+    error PoolAlreadyFundedAndWithdrawn();
 
     /**
      * @notice Emitted when a staker claims their reward tokens.
@@ -84,6 +94,12 @@ interface IIQStaking {
      * @param timestamp The timestamp when staking was deactivated.
      */
     event StakingDeactivated(uint256 timestamp);
+
+     /**
+     * @notice Emitted when reward tokens was withdrawed by staking pool owner.
+     * @param amount The amount of tokens withdrawed.
+     */
+    event TokensWithdrawedByOwner(uint256 amount);
 
     /**
      * @dev Allows a user to stake NFTs by providing an array of token IDs.
