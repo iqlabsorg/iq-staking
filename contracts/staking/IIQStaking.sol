@@ -26,7 +26,7 @@ interface IIQStaking {
     /**
      * @dev Thrown when an attempt is made to withdraw a token that is not staked.
      */
-    error TokenNotStaked();
+    error NFTNotStaked();
 
     /**
      * @dev Thrown when a user attempts to claim zero tokens.
@@ -154,7 +154,7 @@ interface IIQStaking {
      * @param staker The address of the staker.
      * @return An array of token IDs staked by the specified address.
      */
-    function getStakedTokensByAddress(address staker) external view returns (uint256[] memory);
+    function getStakedNFTsByAddress(address staker) external view returns (uint256[] memory);
 
     /**
      * @dev Returns the total amount of tokens claimed by a specified address.

@@ -169,16 +169,16 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
         for (uint i = 0; i < tokenIds.length; i++) {
             if (_tokenOwners[tokenIds[i]] != msg.sender) revert NotTheOwnerOfNFT();
 
-            if (_nftCollection.ownerOf(tokenIds[i]) != address(this)) revert TokenNotStaked();
+            if (_nftCollection.ownerOf(tokenIds[i]) != address(this)) revert NFTNotStaked();
 
             _nftCollection.transferFrom(address(this), msg.sender, tokenIds[i]);
 
-            _removeTokenFromStaking(msg.sender, tokenIds[i]);
+            _removeNFTFromStaking(msg.sender, tokenIds[i]);
         }
         emit WithdrawStakedTokens(msg.sender, tokenIds, block.timestamp);
     }
 
-    function _removeTokenFromStaking(address user, uint256 tokenId) private {
+    function _removeNFTFromStaking(address user, uint256 tokenId) private {
         uint256[] storage stakedTokens = _stakedTokens[user];
         for (uint i = 0; i < stakedTokens.length; i++) {
             if (stakedTokens[i] == tokenId) {
@@ -247,7 +247,7 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
     /**
      * @inheritdoc IIQStaking
      */
-    function getStakedTokensByAddress(address staker) external view returns (uint256[] memory) {
+    function getStakedNFTsByAddress(address staker) external view returns (uint256[] memory) {
         return _stakedTokens[staker];
     }
 
