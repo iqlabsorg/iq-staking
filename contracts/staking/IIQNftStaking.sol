@@ -21,12 +21,12 @@ interface IIQNftStaking {
     /**
      * @dev Thrown when the caller is not the owner of the NFT they are trying to stake.
      */
-    error NotTheOwnerOfNFT();
+    error NotTheOwnerOfNft();
 
     /**
      * @dev Thrown when an attempt is made to withdraw a token that is not staked.
      */
-    error NFTNotStaked();
+    error NftNotStaked();
 
     /**
      * @dev Thrown when a user attempts to claim zero tokens.
@@ -37,11 +37,6 @@ interface IIQNftStaking {
      * @dev Thrown when a user attempts to withdraw zero tokens.
      */
     error CantWithdrawZero();
-
-    /**
-     * @dev Thrown when deployer tries to deposit an incomplete pool volume.
-     */
-    error PoolShouldBeFulfilled();
 
     /**
      * @dev Thrown when deployer tries to withdraw reward tokens when pool still active.
@@ -59,9 +54,9 @@ interface IIQNftStaking {
     error UserHasNoStakedNfts();
 
     /**
-     * @notice Thrown when an attempt is made to deposit tokens into the staking pool after tokens have already been withdrawn.
+     * @notice Thrown when an attempt is made to deposit tokens into the staking pool after tokens have already been deposited.
      */
-    error PoolAlreadyFundedAndWithdrawn();
+    error PoolAlreadyFunded();
 
     /**
      * @notice Emitted when a staker claims their reward tokens.
@@ -89,10 +84,11 @@ interface IIQNftStaking {
 
     /**
      * @notice Emitted when tokens are deposited into the reward pool.
+     * @param rewardTokenAddress The adress of reward token.
      * @param amount The amount of tokens deposited.
      * @param timestamp The timestamp when the deposit occurred.
      */
-    event TokensDeposited(uint256 amount, uint256 timestamp);
+    event TokensDeposited(address rewardTokenAddress, uint256 amount, uint256 timestamp);
 
     /**
      * @notice Emitted when staking is deactivated.
@@ -129,11 +125,12 @@ interface IIQNftStaking {
     function withdraw(uint256[] calldata tokenIds, bytes calldata signature) external;
 
     /**
-     * @dev Allows the deposit of reward tokens into the pool.
-     * @param amount The amount of reward tokens to deposit.
+     * @dev Set reward pool address, pool size and deposit rewards tokens.
+     * @param rewardTokenAddress Address of ERC20 reward token.
+     * @param tokensPoolSize Quantity of reward tokens in staking pool.
      * @notice Full amount should be deposited in 1 transaction.
      */
-    function depositRewardTokens(uint256 amount) external;
+    function depositRewardTokens(address rewardTokenAddress, uint256 tokensPoolSize) external;
 
     /**
      * @dev Allows the withdrawal of reward tokens from the pool.
@@ -161,7 +158,7 @@ interface IIQNftStaking {
      * @param staker The address of the staker.
      * @return An array of token IDs staked by the specified address.
      */
-    function getStakedNFTsByAddress(address staker) external view returns (uint256[] memory);
+    function getStakedNftsByAddress(address staker) external view returns (uint256[] memory);
 
     /**
      * @dev Returns the total amount of tokens claimed by a specified address.

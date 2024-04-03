@@ -115,24 +115,18 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
     /**
      * @dev Constructor for the IQStaking contract.
      * @param proofSource Address of the backend that will provide the signature for the reservation.
-     * @param tokensPoolSize Total capacity of the reward pool.
-     * @param rewardTokenAddress ERC20 token used for rewards.
      * @param nftCollectionAddress ERC721 collection eligible for staking.
      * @param rewardRate Amount of reward tokens earned for each time interval specified in @rewardFrequency.
      * @param rewardFrequency Time interval in seconds between reward distributions.
     */
     constructor(
         address proofSource,
-        uint256 tokensPoolSize,
-        address rewardTokenAddress,
         address nftCollectionAddress,
         uint256 rewardRate,
         uint256 rewardFrequency
     ) EIP712("IQStaking", "1") {
         if (proofSource == address(0)) revert InvalidProofSourceAddress();
         _proofSource = proofSource;
-        _poolSize = tokensPoolSize;
-        _rewardToken = IERC20(rewardTokenAddress);
         _nftCollection = IERC721(nftCollectionAddress);
         _rewardRate = rewardRate;
         _rewardFrequency = rewardFrequency;
@@ -164,7 +158,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
 
         // execute staking logic
         for (uint i = 0; i < tokenIds.length; i++) {
-            if (_nftCollection.ownerOf(tokenIds[i]) != msg.sender) revert NotTheOwnerOfNFT();
+            if (_nftCollection.ownerOf(tokenIds[i]) != msg.sender) revert NotTheOwnerOfNft();
 
             _nftCollection.transferFrom(msg.sender, address(this), tokenIds[i]);
 
@@ -223,9 +217,9 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
         // check that staker is the owner of the NFTs
         for (uint i = 0; i < tokenIds.length; i++) {
             // check that staker is the owner of the NFT
-            if (_tokenOwners[tokenIds[i]] != msg.sender) revert NotTheOwnerOfNFT();
+            if (_tokenOwners[tokenIds[i]] != msg.sender) revert NotTheOwnerOfNft();
             // check that NFT is owned by this contract currently
-            if (_nftCollection.ownerOf(tokenIds[i]) != address(this)) revert NFTNotStaked();
+            if (_nftCollection.ownerOf(tokenIds[i]) != address(this)) revert NftNotStaked();
         }
 
         // verify nonce
@@ -246,14 +240,14 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
             // transfer NFT back to staker
             _nftCollection.transferFrom(address(this), msg.sender, tokenIds[i]);
             // remove NFT from staking
-            _removeNFTFromStaking(msg.sender, tokenIds[i]);
+            _removeNftFromStaking(msg.sender, tokenIds[i]);
         }
 
         // emit event
         emit WithdrawStakedTokens(msg.sender, tokenIds, block.timestamp);
     }
 
-    function _removeNFTFromStaking(address user, uint256 tokenId) private {
+    function _removeNftFromStaking(address user, uint256 tokenId) private {
         uint256[] storage stakedTokens = _stakedTokens[user];
         for (uint i = 0; i < stakedTokens.length; i++) {
             if (stakedTokens[i] == tokenId) {
@@ -268,13 +262,15 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
     /**
      * @inheritdoc IIQNftStaking
      */
-    function depositRewardTokens(uint256 amount) external onlyOwner {
-        if (amount != _poolSize) revert  PoolShouldBeFulfilled();
-        if (_tokensWithdrawedByOwner != 0) revert PoolAlreadyFundedAndWithdrawn();
+    function depositRewardTokens(address rewardTokenAddress, uint256 tokensPoolSize) external onlyOwner {
+        if (_poolSize != 0) revert PoolAlreadyFunded();
 
-        _rewardToken.transferFrom(msg.sender, address(this), amount);
+        _rewardToken = IERC20(rewardTokenAddress);
+        _poolSize = tokensPoolSize;
+
+        _rewardToken.transferFrom(msg.sender, address(this), _poolSize);
         _stakingActive = true;
-        emit TokensDeposited(amount, block.timestamp);
+        emit TokensDeposited(rewardTokenAddress, _poolSize, block.timestamp);
     }
 
     /**
@@ -322,7 +318,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getStakedNFTsByAddress(address staker) external view returns (uint256[] memory) {
+    function getStakedNftsByAddress(address staker) external view returns (uint256[] memory) {
         return _stakedTokens[staker];
     }
 
