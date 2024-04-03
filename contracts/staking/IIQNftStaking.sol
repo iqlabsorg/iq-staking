@@ -67,7 +67,7 @@ interface IIQNftStaking {
     event TokensClaimed(address indexed staker, uint256 amount, uint256 timestamp);
 
     /**
-     * @notice Emitted when a staker stakes their tokens.
+     * @notice Emitted when a staker stakes their NFTs.
      * @param staker The address of the staker.
      * @param tokenIds The array of token IDs that were staked.
      * @param timestamp The timestamp when the staking occurred.
@@ -75,7 +75,7 @@ interface IIQNftStaking {
     event Staked(address indexed staker, uint256[] tokenIds, uint256 timestamp);
 
     /**
-     * @notice Emitted when a staker withdraws their staked tokens.
+     * @notice Emitted when a staker withdraws their staked NFTs.
      * @param staker The address of the staker withdrawing tokens.
      * @param tokenIds The array of token IDs that were withdrawn.
      * @param timestamp The timestamp when the withdrawal occurred.
@@ -103,7 +103,7 @@ interface IIQNftStaking {
     event TokensWithdrawedByOwner(uint256 amount);
 
     /**
-     * @dev Allows a user to stake NFTs by providing an array of token IDs.
+     * @dev Stake NFTs by providing an array of token IDs.
      * @param tokenIds The array of token IDs to stake.
      * @param signature The signature verifying the stake.
      */
@@ -118,7 +118,7 @@ interface IIQNftStaking {
     function claimTokens(address staker, uint256 amount, bytes calldata signature) external;
 
     /**
-     * @dev Allows a staker to withdraw their staked NFTs by providing an array of token IDs.
+     * @dev Withdraw staked NFTs by providing an array of token IDs.
      * @param tokenIds The array of token IDs to withdraw.
      * @param signature The signature verifying the withdrawal.
      */
@@ -133,10 +133,10 @@ interface IIQNftStaking {
     function depositRewardTokens(address rewardTokenAddress, uint256 tokensPoolSize) external;
 
     /**
-     * @dev Allows the withdrawal of reward tokens from the pool.
+     * @dev Withdrawal of reward tokens from the pool.
      * @param amount The amount of reward tokens to withdraw.
      * @param signature The signature verifying the claim.
-     * @notice Pool should be deactivated to perform.
+     * @notice Pool should be deactivated to perform, only for staking pool owner.
      */
     function withdrawRewardTokens(uint256 amount, bytes calldata signature) external;
 
@@ -168,7 +168,7 @@ interface IIQNftStaking {
     function getClaimedTokensByAddress(address staker) external view returns (uint256);
 
     /**
-     * @dev Checks if the specified address has claimed their tokens.
+     * @dev Checks if the specified address has claimed their tokens before.
      * @param staker The address to check.
      * @return True if the specified address has claimed their tokens, false otherwise.
      */
