@@ -10,6 +10,9 @@ import * as dotenv from 'dotenv';
 
 const env = dotenv.config();
 
+// import tasks here';
+import './tasks/deploy-nft-staking';
+
 const DEPLOYMENT_PRIVATE_KEY = env.parsed?.DEPLOYMENT_PRIVATE_KEY;
 const accounts = DEPLOYMENT_PRIVATE_KEY ? [DEPLOYMENT_PRIVATE_KEY] : [];
 
