@@ -59,6 +59,12 @@ interface IIQNftStaking {
     error PoolAlreadyFunded();
 
     /**
+     * @notice Thrown when an attempt is made to deposit zero tokens.
+     */
+    error PoolSizeMustBePositive();
+
+
+    /**
      * @notice Emitted when a staker claims their reward tokens.
      * @param staker The address of the staker claiming tokens.
      * @param amount The amount of tokens claimed.

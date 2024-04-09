@@ -19,8 +19,8 @@ task('deploy:nft-staking', 'Deploy the IQNftStaking contract')
     from: deployer.address,
     args: [proofSource, nftCollectionAddress, rewardRate, rewardFrequency ],
   });
-  console.log('DailyCheckIn deploy tx:', transactionHash);
-  console.log('DailyCheckIn address:', address);
+  console.log('IQNftStaking deploy tx:', transactionHash);
+  console.log('IQNftStaking address:', address);
 
   await verifyContract(hre, address, [proofSource, nftCollectionAddress, rewardRate, rewardFrequency]);
 

@@ -264,6 +264,8 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
      */
     function depositRewardTokens(address rewardTokenAddress, uint256 tokensPoolSize) external onlyOwner {
         if (_poolSize != 0) revert PoolAlreadyFunded();
+        if (tokensPoolSize == 0) revert PoolSizeMustBePositive();
+
 
         _rewardToken = IERC20(rewardTokenAddress);
         _poolSize = tokensPoolSize;
