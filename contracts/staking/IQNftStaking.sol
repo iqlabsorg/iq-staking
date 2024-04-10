@@ -116,20 +116,14 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
      * @dev Constructor for the IQStaking contract.
      * @param proofSource Address of the backend that will provide the signature for the reservation.
      * @param nftCollectionAddress ERC721 collection eligible for staking.
-     * @param rewardRate Amount of reward tokens earned for each time interval specified in @rewardFrequency.
-     * @param rewardFrequency Time interval in seconds between reward distributions.
     */
     constructor(
         address proofSource,
-        address nftCollectionAddress,
-        uint256 rewardRate,
-        uint256 rewardFrequency
+        address nftCollectionAddress
     ) EIP712("IQStaking", "1") {
         if (proofSource == address(0)) revert InvalidProofSourceAddress();
         _proofSource = proofSource;
         _nftCollection = IERC721(nftCollectionAddress);
-        _rewardRate = rewardRate;
-        _rewardFrequency = rewardFrequency;
     }
 
     /**
@@ -262,13 +256,18 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
     /**
      * @inheritdoc IIQNftStaking
      */
-    function depositRewardTokens(address rewardTokenAddress, uint256 tokensPoolSize) external onlyOwner {
+    function depositRewardTokens(address rewardTokenAddress, uint256 tokensPoolSize, uint256 rewardRate,
+        uint256 rewardFrequency) external onlyOwner {
         if (_poolSize != 0) revert PoolAlreadyFunded();
         if (tokensPoolSize == 0) revert PoolSizeMustBePositive();
+        if (rewardRate == 0) revert RewardRateMustBePositive();
+        if (rewardFrequency == 0) revert RewardFrequencyMustBePositive();
 
 
         _rewardToken = IERC20(rewardTokenAddress);
         _poolSize = tokensPoolSize;
+        _rewardRate = rewardRate;
+        _rewardFrequency = rewardFrequency;
 
         _rewardToken.transferFrom(msg.sender, address(this), _poolSize);
         _stakingActive = true;

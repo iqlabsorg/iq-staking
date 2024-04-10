@@ -63,6 +63,16 @@ interface IIQNftStaking {
      */
     error PoolSizeMustBePositive();
 
+    /**
+     * @notice Thrown when an attempt is made to setup reward rate = 0.
+     */
+    error RewardRateMustBePositive();
+
+    /**
+     * @notice Thrown when an attempt is made to setup reward frequency = 0.
+     */
+    error RewardFrequencyMustBePositive();
+
 
     /**
      * @notice Emitted when a staker claims their reward tokens.
@@ -134,9 +144,12 @@ interface IIQNftStaking {
      * @dev Set reward pool address, pool size and deposit rewards tokens.
      * @param rewardTokenAddress Address of ERC20 reward token.
      * @param tokensPoolSize Quantity of reward tokens in staking pool.
+     * @param rewardRate Amount of reward tokens earned for each time interval specified in @rewardFrequency.
+     * @param rewardFrequency Time interval in seconds between reward distributions.
      * @notice Full amount should be deposited in 1 transaction.
      */
-    function depositRewardTokens(address rewardTokenAddress, uint256 tokensPoolSize) external;
+    function depositRewardTokens(address rewardTokenAddress, uint256 tokensPoolSize, uint256 rewardRate,
+        uint256 rewardFrequency) external;
 
     /**
      * @dev Withdrawal of reward tokens from the pool.

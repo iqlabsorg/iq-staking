@@ -30,8 +30,6 @@ describe('IQ NFT Staking Contract', function () {
     nftStaking = (await run('deploy:nft-staking', {
       proofSource: await proofSource.getAddress(),
       nftCollectionAddress: (await nftCollection.getAddress()).toString(),
-      rewardRate: REWARD_RATE.toString(),
-      rewardFrequency: REWARD_FREQUENCY.toString(),
     })) as IQNftStaking;
 
     const deployerAddress = await deployer.getAddress();
@@ -42,14 +40,6 @@ describe('IQ NFT Staking Contract', function () {
 
     it('Camaping should be deactivated after deployment', async function () {
       expect(await nftStaking.isStakingActive()).to.equal(false);
-    });
-
-    it('getRewardRate should show actual reward rate', async function () {
-      expect(await nftStaking.getRewardRate()).to.equal(REWARD_RATE);
-    });
-
-    it('getRewardFrequency should show actual reward frequency', async function () {
-      expect(await nftStaking.getRewardFrequency()).to.equal(REWARD_FREQUENCY);
     });
 
     it('showMaxPoolSize should show be zero', async function () {
@@ -69,6 +59,7 @@ describe('IQ NFT Staking Contract', function () {
         initialSupply: POOL_SIZE.toString(),
       })) as ERC20Mock;
 
+      //Aprprove tokens for transfering in to reward pool
       await rewardToken.approve(nftStaking, POOL_SIZE);
     });
 
@@ -76,27 +67,38 @@ describe('IQ NFT Staking Contract', function () {
 
       const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
 
-      await expect(nftStaking.depositRewardTokens(rewardToken, POOL_SIZE))
+      await expect(nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY))
     .to.emit(nftStaking, 'TokensDeposited')
     .withArgs(rewardToken, POOL_SIZE, currentTimestamp+1);
 
       expect(await nftStaking.showMaxPoolSize()).to.equal(POOL_SIZE);
       expect(await nftStaking.totalTokensLeft()).to.equal(POOL_SIZE);
+      expect(await nftStaking.getRewardRate()).to.equal(REWARD_RATE);
+      expect(await nftStaking.getRewardFrequency()).to.equal(REWARD_FREQUENCY);
       expect(await nftStaking.isStakingActive()).to.equal(true);
     });
 
     it('depositRewardTokens should prevent deposits once the pool is already funded', async function () {
 
-      await nftStaking.depositRewardTokens(rewardToken, POOL_SIZE);
+      await nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
 
-      await expect(nftStaking.depositRewardTokens(rewardToken, Math.floor(Math.random() * 10000)))
+      await expect(nftStaking.depositRewardTokens(rewardToken, Math.floor(Math.random() * 10000), REWARD_RATE, REWARD_FREQUENCY))
     .to.revertedWithCustomError(nftStaking, 'PoolAlreadyFunded');
     });
 
     it('depositRewardTokens should prevent zero tokens funding', async function () {
-
-      await expect(nftStaking.depositRewardTokens(rewardToken, 0))
+      await expect(nftStaking.depositRewardTokens(rewardToken, 0, REWARD_RATE, REWARD_FREQUENCY))
     .to.revertedWithCustomError(nftStaking, 'PoolSizeMustBePositive');
+    });
+
+    it('depositRewardTokens should prevent zero reward rate', async function () {
+      await expect(nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, 0, REWARD_FREQUENCY))
+    .to.revertedWithCustomError(nftStaking, 'RewardRateMustBePositive');
+    });
+
+    it('depositRewardTokens should prevent zero reward frequency', async function () {
+      await expect(nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, 0))
+    .to.revertedWithCustomError(nftStaking, 'RewardFrequencyMustBePositive');
 
     });
 
