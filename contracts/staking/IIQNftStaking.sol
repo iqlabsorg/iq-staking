@@ -102,9 +102,11 @@ interface IIQNftStaking {
      * @notice Emitted when tokens are deposited into the reward pool.
      * @param rewardTokenAddress The adress of reward token.
      * @param amount The amount of tokens deposited.
+     * @param rewardRate Amount of reward tokens earned for each time interval specified in @rewardFrequency.
+     * @param rewardFrequency Time interval in seconds between reward distributions.
      * @param timestamp The timestamp when the deposit occurred.
      */
-    event TokensDeposited(address rewardTokenAddress, uint256 amount, uint256 timestamp);
+    event TokensDeposited(address rewardTokenAddress, uint256 amount, uint256 rewardRate, uint256 rewardFrequency, uint256 timestamp);
 
     /**
      * @notice Emitted when staking is deactivated.

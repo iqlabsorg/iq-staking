@@ -69,7 +69,7 @@ describe('IQ NFT Staking Contract', function () {
 
       await expect(nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY))
     .to.emit(nftStaking, 'TokensDeposited')
-    .withArgs(rewardToken, POOL_SIZE, currentTimestamp+1);
+    .withArgs(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY, currentTimestamp+1);
 
       expect(await nftStaking.showMaxPoolSize()).to.equal(POOL_SIZE);
       expect(await nftStaking.totalTokensLeft()).to.equal(POOL_SIZE);

@@ -271,7 +271,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
 
         _rewardToken.transferFrom(msg.sender, address(this), _poolSize);
         _stakingActive = true;
-        emit TokensDeposited(rewardTokenAddress, _poolSize, block.timestamp);
+        emit TokensDeposited(rewardTokenAddress, _poolSize, _rewardRate, _rewardFrequency, block.timestamp);
     }
 
     /**
