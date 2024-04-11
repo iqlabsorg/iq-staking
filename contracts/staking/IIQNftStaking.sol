@@ -49,11 +49,6 @@ interface IIQNftStaking {
     error StakingNotActive();
 
     /**
-     * @dev Thrown when a user attempts to withdraw nfts that are not staked.
-     */
-    error UserHasNoStakedNfts();
-
-    /**
      * @notice Thrown when an attempt is made to deposit tokens into the staking pool after tokens have already been deposited.
      */
     error PoolAlreadyFunded();
