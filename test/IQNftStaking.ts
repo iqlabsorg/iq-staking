@@ -41,6 +41,117 @@ async function signAndWithdrawTokens(
   return signature;
 }
 
+async function signAndStakeNfts(
+  nftStaking: IQNftStaking,
+  proofSource: Signer,
+  staker: Signer,
+  tokenIds: BigNumberish[],
+): Promise<string> {
+  const stakerAddress = await staker.getAddress();
+  const nonce = await nftStaking.nonceCounter(staker);
+
+  const domain = {
+    name: 'IQNftStaking',
+    version: '1',
+    chainId: (await ethers.provider.getNetwork()).chainId,
+    verifyingContract: await nftStaking.getAddress(),
+  };
+
+  const types = {
+    Stake: [
+      { name: 'staker', type: 'address' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'tokenIds', type: 'uint256[]' },
+    ],
+  };
+
+  const message = {
+    staker: stakerAddress,
+    nonce: nonce.toString(),
+    tokenIds: tokenIds,
+  };
+
+  const signature = await proofSource.signTypedData(domain, types, message);
+
+  await nftStaking.connect(staker).stake(tokenIds, signature);
+
+  return signature;
+}
+
+async function signAndWithdrawNfts(
+  nftStaking: IQNftStaking,
+  proofSource: Signer,
+  staker: Signer,
+  tokenIds: BigNumberish[],
+): Promise<string> {
+  const stakerAddress = await staker.getAddress();
+  const nonce = await nftStaking.nonceCounter(staker);
+
+  const domain = {
+    name: 'IQNftStaking',
+    version: '1',
+    chainId: (await ethers.provider.getNetwork()).chainId,
+    verifyingContract: await nftStaking.getAddress(),
+  };
+
+  const types = {
+    Stake: [
+      { name: 'staker', type: 'address' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'tokenIds', type: 'uint256[]' },
+    ],
+  };
+
+  const message = {
+    staker: stakerAddress,
+    nonce: nonce.toString(),
+    tokenIds: tokenIds,
+  };
+
+  const signature = await proofSource.signTypedData(domain, types, message);
+
+  await nftStaking.connect(staker).withdraw(tokenIds, signature);
+
+  return signature;
+}
+
+async function signAndClaimTokens(
+  nftStaking: IQNftStaking,
+  proofSource: Signer,
+  staker: Signer,
+  amount: BigNumberish,
+): Promise<string> {
+  const stakerAddress = await staker.getAddress();
+  const nonce = await nftStaking.nonceCounter(staker);
+
+  const domain = {
+    name: 'IQNftStaking',
+    version: '1',
+    chainId: (await ethers.provider.getNetwork()).chainId,
+    verifyingContract: await nftStaking.getAddress(),
+  };
+
+  const types = {
+    ClaimTokens: [
+      { name: 'staker', type: 'address' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'amount', type: 'uint256' },
+    ],
+  };
+
+  const message = {
+    staker: stakerAddress,
+    nonce: nonce.toString(),
+    amount: amount.toString(),
+  };
+
+  const signature = await proofSource.signTypedData(domain, types, message);
+
+  await nftStaking.connect(staker).claimTokens(staker, amount, signature);
+
+  return signature;
+}
+
 describe('IQ NFT Staking Contract', function () {
 
   const POOL_SIZE = ethers.parseEther('100000');
@@ -165,9 +276,12 @@ describe('IQ NFT Staking Contract', function () {
       await signAndWithdrawTokens(nftStaking, proofSource, deployer, POOL_SIZE);
     });
 
+  });
+
   describe('NFT Staking Process', function () {
 
     let rewardToken: ERC20Mock;
+    let oneNftArray: [1];
 
     beforeEach(async function () {
 
@@ -189,9 +303,9 @@ describe('IQ NFT Staking Contract', function () {
 
     it('depositRewardTokens should prevent deposits once the pool is already funded', async function () {
 
-
+      await signAndStakeNfts(nftStaking, proofSource, staker, oneNftArray);
 
     });
-  });
+
 });
 });
