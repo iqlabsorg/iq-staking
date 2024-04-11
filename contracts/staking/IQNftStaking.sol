@@ -206,14 +206,14 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
         bytes calldata signature
     ) external nonReentrant {
         // check if staker has staked tokens
-        if (_stakedTokens[msg.sender].length == 0) revert UserHasNoStakedNfts();
+        //if (_stakedTokens[msg.sender].length == 0) revert UserHasNoStakedNfts();
 
         // check that staker is the owner of the NFTs
         for (uint i = 0; i < tokenIds.length; i++) {
-            // check that staker is the owner of the NFT
-            if (_tokenOwners[tokenIds[i]] != msg.sender) revert NotTheOwnerOfNft();
             // check that NFT is owned by this contract currently
             if (_nftCollection.ownerOf(tokenIds[i]) != address(this)) revert NftNotStaked();
+            // check that staker is the owner of the NFT
+            if (_tokenOwners[tokenIds[i]] != msg.sender) revert NotTheOwnerOfNft();
         }
 
         // verify nonce

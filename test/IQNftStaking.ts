@@ -1,7 +1,7 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
 import { ethers, run } from 'hardhat';
-import { BigNumberish, Signer, formatUnits, id } from 'ethers';
+import { BigNumberish, Signer, ZeroAddress, formatUnits, id } from 'ethers';
 import { IQNftStaking, ERC721Mock, ERC20Mock } from '../typechain';
 
 async function signAndWithdrawTokens(
@@ -348,8 +348,6 @@ describe('IQ NFT Staking Contract', function () {
 
       await nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
 
-
-
       await nftCollection.connect(deployer).mint(staker, 1);
       await nftCollection.connect(staker).approve(nftStaking, 1);
       await nftCollection.connect(deployer).mint(staker, 2);
@@ -399,17 +397,44 @@ describe('IQ NFT Staking Contract', function () {
         .revertedWithCustomError(nftStaking, 'StakingNotActive');
     });
 
+    it('withdraw should work correctly', async function () {
 
-    //UNSTAKING PROCESS
-
-    it('withdraw should work corretly', async function () {
-
-      //fist stake
       await signAndStakeNfts(nftStaking, proofSource, staker, firstNft);
-      //second stake
+
+      expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(firstNft);
+      expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
+
+      await signAndWithdrawNfts(nftStaking, proofSource, staker, firstNft)
+
+      expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal([]);
+      expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(ZeroAddress);
+    });
+
+    it('batch withdraw should work corretly', async function () {
+
+      await signAndStakeNfts(nftStaking, proofSource, staker, firstNft);
       await signAndStakeNfts(nftStaking, proofSource, staker, secondNft);
 
       await signAndWithdrawNfts(nftStaking, proofSource, staker, bothNfts)
+
+      expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal([]);
+      expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(ZeroAddress);
+      expect(await nftStaking.getOwnerOfStakedTokenId(2)).to.equal(ZeroAddress);
+    });
+
+    it('withdraw should be reverted if user attempts to withdaw an NFT that is not in the staking', async function () {
+
+      await expect(signAndWithdrawNfts(nftStaking, proofSource, staker, firstNft)).to.be
+        .revertedWithCustomError(nftStaking, 'NftNotStaked');
+
+    });
+
+    it('withdraw should fail if user not the owner of NFT', async function () {
+
+      await signAndStakeNfts(nftStaking, proofSource, staker, firstNft);
+
+      await expect(signAndWithdrawNfts(nftStaking, proofSource, deployer, firstNft)).to.be
+        .revertedWithCustomError(nftStaking, 'NotTheOwnerOfNft');
 
     });
 
