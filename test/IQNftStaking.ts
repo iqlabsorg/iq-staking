@@ -181,7 +181,7 @@ describe('IQ NFT Staking Contract', function () {
   });
 
   describe('Deployment & Initialization', function () {
-    // Ensure correct deployed and configurations initialization.
+  // Ensure correct deployed and configurations initialization.
 
     it('Camaping should be deactivated after deployment', async function () {
       expect(await nftStaking.isStakingActive()).to.equal(false);
@@ -199,6 +199,7 @@ describe('IQ NFT Staking Contract', function () {
   });
 
   describe('Reward Pool Initialization', function () {
+  // Ensure correct pool initialization.
 
     let rewardToken: ERC20Mock;
 
@@ -257,13 +258,12 @@ describe('IQ NFT Staking Contract', function () {
 
       const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
 
-
       await expect(nftStaking.deactivateStaking()).to.emit(nftStaking, 'StakingDeactivated')
       .withArgs(currentTimestamp+1);
       expect(await nftStaking.isStakingActive()).to.equal(false);
     });
 
-    it('reward tokens should be withdrawable after campaing deactivated', async function () {
+    it('withdrawRewardTokens should be withdrawable after campaing deactivated', async function () {
       await nftStaking.connect(deployer).depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
 
       const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
@@ -271,14 +271,45 @@ describe('IQ NFT Staking Contract', function () {
       await expect(nftStaking.deactivateStaking()).to.emit(nftStaking, 'StakingDeactivated')
         .withArgs(currentTimestamp+1);
 
-      //our backand prove that staking owner don't owe tokens to anyone;
+      // signAndWithdrawTokens verify that the staking owner can withdraw only the amount of tokens they do not owe.
+      // Signature will not be provided, transaction fails if there is a debt.
 
       await signAndWithdrawTokens(nftStaking, proofSource, deployer, POOL_SIZE);
+
+      //expect(signAndWithdrawTokens(nftStaking, proofSource, deployer, POOL_SIZE).to.emit(nftStaking, 'TokensWithdrawedByOwner').withArgs(POOL_SIZE));
+      expect(await nftStaking.totalTokensLeft()).to.equal(0);
     });
+
+    it('withdrawRewardTokens should be rejected if amount = 0', async function () {
+      await nftStaking.connect(deployer).depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
+
+      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
+
+      await expect(nftStaking.deactivateStaking()).to.emit(nftStaking, 'StakingDeactivated')
+        .withArgs(currentTimestamp+1);
+
+      // signAndWithdrawTokens verify that the staking owner can withdraw only the amount of tokens they do not owe.
+      // Signature will not be provided, transaction fails if there is a debt.
+
+      await expect(signAndWithdrawTokens(nftStaking, proofSource, deployer, 0)).to.be.revertedWithCustomError(nftStaking, 'CantWithdrawZero');
+      expect(await nftStaking.totalTokensLeft()).to.equal(POOL_SIZE);
+    });
+
+    it('withdrawRewardTokens should be rejected if staking is active', async function () {
+      await nftStaking.connect(deployer).depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
+
+      // signAndWithdrawTokens verify that the staking owner can withdraw only the amount of tokens they do not owe.
+      // Signature will not be provided, transaction fails if there is a debt.
+
+      await expect(signAndWithdrawTokens(nftStaking, proofSource, deployer, 0)).to.be.revertedWithCustomError(nftStaking, 'StakingShouldBeDeactivated');
+      expect(await nftStaking.totalTokensLeft()).to.equal(POOL_SIZE);
+    });
+
 
   });
 
   describe('NFT Staking Process', function () {
+  // Ensure correct NFT staking funcftionality.
 
     let rewardToken: ERC20Mock;
     let oneNftArray: [1];
