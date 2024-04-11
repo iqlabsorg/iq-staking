@@ -7,33 +7,36 @@ import { IQNftStaking, ERC721Mock, ERC20Mock } from '../typechain';
 async function signAndWithdrawTokens(
   nftStaking: IQNftStaking,
   proofSource: Signer,
-  deployer: Signer,
+  withdrawer: Signer,
   amount: BigNumberish,
 ): Promise<string> {
-  const nonce = await nftStaking.nonceCounter(deployer);
+  const withdrawerAddress = await withdrawer.getAddress();
+  const nonce = await nftStaking.nonceCounter(withdrawer);
 
   const domain = {
-    name: 'IQStaking',
+    name: 'IQNftStaking',
     version: '1',
     chainId: (await ethers.provider.getNetwork()).chainId,
-    stakingContract: await nftStaking.getAddress(),
+    verifyingContract: await nftStaking.getAddress(),
   };
 
   const types = {
-    IQNftStaking: [
-      { name: 'nonce', type: 'uint256' },
+    WithdrawRewardTokens: [
+      { name: 'withdrawer', type: 'address' },
       { name: 'amount', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
     ],
   };
 
   const message = {
-    nonce: nonce.toString(),
+    withdrawer: withdrawerAddress,
     amount: amount.toString(),
+    nonce: nonce.toString(),
   };
 
   const signature = await proofSource.signTypedData(domain, types, message);
 
-  await nftStaking.withdrawRewardTokens(amount, signature);
+  await nftStaking.connect(withdrawer).withdrawRewardTokens(amount, signature);
 
   return signature;
 }
@@ -46,13 +49,14 @@ describe('IQ NFT Staking Contract', function () {
 
   let deployer: Signer;
   let proofSource: Signer;
+  let poolCreator: Signer;
   let nftStaking: IQNftStaking;
   let nftCollection: ERC721Mock;
   let staker: Signer;
 
 
   beforeEach(async function () {
-    [deployer, staker, proofSource] = await ethers.getSigners();
+    [deployer, staker, poolCreator, proofSource] = await ethers.getSigners();
 
     //Deploy ERC721Mock
     nftCollection = (await hre.run('deploy:nft-mock', {
@@ -63,8 +67,6 @@ describe('IQ NFT Staking Contract', function () {
       proofSource: await proofSource.getAddress(),
       nftCollectionAddress: (await nftCollection.getAddress()).toString(),
     })) as IQNftStaking;
-
-    const deployerAddress = await deployer.getAddress();
   });
 
   describe('Deployment & Initialization', function () {
@@ -97,7 +99,7 @@ describe('IQ NFT Staking Contract', function () {
       })) as ERC20Mock;
 
       //Aprprove tokens for transfering in to reward pool
-      await rewardToken.approve(nftStaking, POOL_SIZE);
+      await rewardToken.connect(deployer).approve(nftStaking, POOL_SIZE);
     });
 
     it('depositRewardTokens should deposit tokens correctly', async function () {
@@ -151,18 +153,16 @@ describe('IQ NFT Staking Contract', function () {
     });
 
     it('reward tokens should be withdrawable after campaing deactivated', async function () {
-
-      await nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
+      await nftStaking.connect(deployer).depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
 
       const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
 
       await expect(nftStaking.deactivateStaking()).to.emit(nftStaking, 'StakingDeactivated')
-      .withArgs(currentTimestamp+1);
+        .withArgs(currentTimestamp+1);
 
-      //our backand prove that staking owner don't owe tokens to anyone
+      //our backand prove that staking owner don't owe tokens to anyone;
 
       await signAndWithdrawTokens(nftStaking, proofSource, deployer, POOL_SIZE);
-
     });
 
   describe('NFT Staking Process', function () {

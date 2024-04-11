@@ -120,7 +120,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
     constructor(
         address proofSource,
         address nftCollectionAddress
-    ) EIP712("IQStaking", "1") {
+    ) EIP712("IQNftStaking", "1") {
         if (proofSource == address(0)) revert InvalidProofSourceAddress();
         _proofSource = proofSource;
         _nftCollection = IERC721(nftCollectionAddress);
@@ -280,7 +280,6 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
     function withdrawRewardTokens(uint256 amount, bytes calldata signature) external onlyOwner {
         if (_stakingActive) revert StakingShouldBeDeactivated();
         if (amount == 0) revert CantWithdrawZero();
-
 
         uint256 nonce = _useNonce(msg.sender);
 

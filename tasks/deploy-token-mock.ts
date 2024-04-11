@@ -1,12 +1,19 @@
-import { task, types } from 'hardhat/config';
+import { subtask, types } from 'hardhat/config';
 import { ERC20Mock__factory } from '../typechain';
 import { verifyContract } from './utils/verify';
 
-task('deploy:token-mock', 'Deploy the ERC20Mock contract')
+subtask('deploy:token-mock', 'Deploy the ERC20Mock contract')
 .addParam('initialSupply', 'The initial supply of tokens to mint', undefined, types.string)
-.setAction(async ({ initialSupply }, hre) => {
+.addParam('customSigner', 'The wallet to use as the signer', undefined, types.any, true)
+.setAction(async ({ initialSupply, customSigner }, hre) => {
+  let signer;
 
-  const [deployer] = await hre.ethers.getSigners();
+  if (!customSigner) {
+    const [deployer] = await hre.ethers.getSigners();
+    signer = deployer;
+  } else {
+    signer = customSigner;
+  }
 
   await hre.deployments.delete('ERC20Mock');
 
@@ -14,7 +21,7 @@ task('deploy:token-mock', 'Deploy the ERC20Mock contract')
 
   const { address, transactionHash } = await hre.deployments.deploy('ERC20Mock', {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    from: deployer.address,
+    from: signer.address,
     args: [initialSupplyWei],
   });
   console.log('ERC20Mock deploy tx:', transactionHash);
@@ -23,5 +30,5 @@ task('deploy:token-mock', 'Deploy the ERC20Mock contract')
   await verifyContract(hre, address, [initialSupplyWei]);
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-  return new ERC20Mock__factory(deployer).attach(address);
+  return new ERC20Mock__factory(signer).attach(address);
 });
