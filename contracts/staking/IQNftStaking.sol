@@ -9,17 +9,33 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./IIQStaking.sol";
+import "./IIQNftStaking.sol";
 
-contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
+contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
     using Counters for Counters.Counter;
 
     /**
+     * @dev EIP-712 type hash for staking tokens. Used in the stake function to securely stake tokens.
+     * This type hash includes the address of the staker, a nonce for replay protection, and the token IDs to stake.
+     */
+    bytes32 private constant STAKE_TOKENS_TYPEHASH = keccak256(
+        "Stake(address staker,uint256 nonce,uint256[] tokenIds)"
+    );
+
+     /**
      * @dev EIP-712 type hash for claiming tokens. Used in the claimTokens function to securely claim staking rewards.
      * This type hash includes the address of the staker, a nonce for replay protection, and the amount of tokens to claim.
      */
     bytes32 private constant CLAIM_TOKENS_TYPEHASH = keccak256(
         "ClaimTokens(address staker,uint256 nonce,uint256 amount)"
+    );
+
+    /**
+     * @dev EIP-712 type hash for withdrawing tokens. Used in the withdraw function to securely withdraw staked tokens.
+     * This type hash includes the address of the staker, a nonce for replay protection, and the token IDs to withdraw.
+    */
+    bytes32 private constant WITHDRAW_TOKENS_TYPEHASH = keccak256(
+        "Withdraw(address staker,uint256 nonce,uint256[] tokenIds)"
     );
 
     /**
@@ -30,6 +46,10 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
         "WithdrawRewardTokens(address withdrawer,uint256 amount,uint256 nonce)"
     );
 
+    /**
+     * @dev Nonce counters for each reserver.
+     * Used to prevent replay attacks.
+    */
     mapping(address => Counters.Counter) private _nonceCounters;
 
     /**
@@ -95,58 +115,71 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
     /**
      * @dev Constructor for the IQStaking contract.
      * @param proofSource Address of the backend that will provide the signature for the reservation.
-     * @param tokensPoolSize Total capacity of the reward pool.
-     * @param rewardTokenAddress ERC20 token used for rewards.
      * @param nftCollectionAddress ERC721 collection eligible for staking.
-     * @param rewardRate Amount of reward tokens earned for each time interval specified in @rewardFrequency.
-     * @param rewardFrequency Time interval in seconds between reward distributions.
     */
     constructor(
         address proofSource,
-        uint256 tokensPoolSize,
-        address rewardTokenAddress,
-        address nftCollectionAddress,
-        uint256 rewardRate,
-        uint256 rewardFrequency
-    ) EIP712("ClaimTokens", "1") {
+        address nftCollectionAddress
+    ) EIP712("IQNftStaking", "1") {
         if (proofSource == address(0)) revert InvalidProofSourceAddress();
         _proofSource = proofSource;
-        _poolSize = tokensPoolSize;
-        _rewardToken = IERC20(rewardTokenAddress);
         _nftCollection = IERC721(nftCollectionAddress);
-        _rewardRate = rewardRate;
-        _rewardFrequency = rewardFrequency;
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
-    function stake(uint256[] calldata tokenIds) external nonReentrant {
+    function stake(
+        uint256[] calldata tokenIds,
+        bytes calldata signature
+    ) external nonReentrant {
+        // check if staking is active
         if (!_stakingActive) revert StakingNotActive();
+
+        // verify nonce
+        uint256 nonce = _useNonce(msg.sender);
+
+        // generate typed data signature for verification
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            STAKE_TOKENS_TYPEHASH,
+            msg.sender,
+            nonce,
+            keccak256(abi.encodePacked(tokenIds))
+        )));
+
+        // verify that signature from backend is correct
+        require(_verifySignature(_proofSource, digest, signature));
+
+        // execute staking logic
         for (uint i = 0; i < tokenIds.length; i++) {
-            if (_nftCollection.ownerOf(tokenIds[i]) != msg.sender) revert NotTheOwnerOfNFT();
+            if (_nftCollection.ownerOf(tokenIds[i]) != msg.sender) revert NotTheOwnerOfNft();
 
             _nftCollection.transferFrom(msg.sender, address(this), tokenIds[i]);
 
             _stakedTokens[msg.sender].push(tokenIds[i]);
             _tokenOwners[tokenIds[i]] = msg.sender;
         }
+
+        // emit event
         emit Staked(msg.sender, tokenIds, block.timestamp);
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function claimTokens(
         address staker,
         uint256 amount,
         bytes calldata signature
     ) external {
+        // basic checks
         if (amount == 0) revert CantClaimZero();
         if (_totalTokensClaimed + amount > _poolSize) revert InsufficientPoolSize();
 
+        // verify nonce
         uint256 nonce = _useNonce(staker);
 
+        // generate typed data signature for verification
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
             CLAIM_TOKENS_TYPEHASH,
             staker,
@@ -154,31 +187,58 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
             amount
         )));
 
+        // verify that signature from backend is correct
         require(_verifySignature(_proofSource, digest, signature));
 
-        _claimedTokens[staker] = amount;
+        // execute claim logic
+        _claimedTokens[staker] += amount;
         _totalTokensClaimed += amount;
 
+        // emit event
         emit TokensClaimed(staker, amount, block.timestamp);
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
-    function withdraw(uint256[] calldata tokenIds) external nonReentrant {
+    function withdraw(
+        uint256[] calldata tokenIds,
+        bytes calldata signature
+    ) external nonReentrant {
+        // check that staker is the owner of the NFTs
         for (uint i = 0; i < tokenIds.length; i++) {
-            if (_tokenOwners[tokenIds[i]] != msg.sender) revert NotTheOwnerOfNFT();
-
-            if (_nftCollection.ownerOf(tokenIds[i]) != address(this)) revert NFTNotStaked();
-
-            _nftCollection.transferFrom(address(this), msg.sender, tokenIds[i]);
-
-            _removeNFTFromStaking(msg.sender, tokenIds[i]);
+            // check that NFT is owned by this contract currently
+            if (_nftCollection.ownerOf(tokenIds[i]) != address(this)) revert NftNotStaked();
+            // check that staker is the owner of the NFT
+            if (_tokenOwners[tokenIds[i]] != msg.sender) revert NotTheOwnerOfNft();
         }
+
+        // verify nonce
+        uint256 nonce = _useNonce(msg.sender);
+
+        // generate typed data signature for verification
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            WITHDRAW_TOKENS_TYPEHASH,
+            msg.sender,
+            nonce,
+            keccak256(abi.encodePacked(tokenIds))
+        )));
+
+        // verify that signature from backend is correct
+        require(_verifySignature(_proofSource, digest, signature));
+
+        for (uint i = 0; i < tokenIds.length; i++) {
+            // transfer NFT back to staker
+            _nftCollection.transferFrom(address(this), msg.sender, tokenIds[i]);
+            // remove NFT from staking
+            _removeNftFromStaking(msg.sender, tokenIds[i]);
+        }
+
+        // emit event
         emit WithdrawStakedTokens(msg.sender, tokenIds, block.timestamp);
     }
 
-    function _removeNFTFromStaking(address user, uint256 tokenId) private {
+    function _removeNftFromStaking(address user, uint256 tokenId) private {
         uint256[] storage stakedTokens = _stakedTokens[user];
         for (uint i = 0; i < stakedTokens.length; i++) {
             if (stakedTokens[i] == tokenId) {
@@ -191,24 +251,32 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
-    function depositRewardTokens(uint256 amount) external onlyOwner {
-        if (amount != _poolSize) revert  PoolShouldBeFulfilled();
-        if (_tokensWithdrawedByOwner != 0) revert PoolAlreadyFundedAndWithdrawn();
+    function depositRewardTokens(address rewardTokenAddress, uint256 tokensPoolSize, uint256 rewardRate,
+        uint256 rewardFrequency) external onlyOwner {
+        if (_poolSize != 0) revert PoolAlreadyFunded();
+        if (tokensPoolSize == 0) revert PoolSizeMustBePositive();
+        if (rewardRate == 0) revert RewardRateMustBePositive();
+        if (rewardFrequency == 0) revert RewardFrequencyMustBePositive();
 
-        _rewardToken.transferFrom(msg.sender, address(this), amount);
+
+        _rewardToken = IERC20(rewardTokenAddress);
+        _poolSize = tokensPoolSize;
+        _rewardRate = rewardRate;
+        _rewardFrequency = rewardFrequency;
+
+        _rewardToken.transferFrom(msg.sender, address(this), _poolSize);
         _stakingActive = true;
-        emit TokensDeposited(amount, block.timestamp);
+        emit TokensDeposited(rewardTokenAddress, _poolSize, _rewardRate, _rewardFrequency, block.timestamp);
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function withdrawRewardTokens(uint256 amount, bytes calldata signature) external onlyOwner {
         if (_stakingActive) revert StakingShouldBeDeactivated();
         if (amount == 0) revert CantWithdrawZero();
-
 
         uint256 nonce = _useNonce(msg.sender);
 
@@ -229,7 +297,7 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function deactivateStaking() external onlyOwner {
         if (!_stakingActive) revert StakingNotActive();
@@ -238,91 +306,91 @@ contract IQStaking is IIQStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function getOwnerOfStakedTokenId(uint256 tokenId) external view returns (address) {
         return _tokenOwners[tokenId];
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
-    function getStakedNFTsByAddress(address staker) external view returns (uint256[] memory) {
+    function getStakedNftsByAddress(address staker) external view returns (uint256[] memory) {
         return _stakedTokens[staker];
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function getClaimedTokensByAddress(address staker) external view returns (uint256) {
         return _claimedTokens[staker];
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function hasClaimed(address staker) external view returns (bool) {
         return _claimedTokens[staker] != 0;
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function showMaxPoolSize() public view returns (uint256) {
         return _poolSize;
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function totalTokensClaimed() external view returns (uint256) {
         return _totalTokensClaimed;
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function totalTokensLeft() public view returns (uint256) {
         return _poolSize - _totalTokensClaimed - _tokensWithdrawedByOwner;
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function getRewardRate() public view returns (uint256) {
         return _rewardRate;
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function getRewardFrequency() public view returns (uint256) {
         return _rewardFrequency;
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function getRewardTokenAddress() public view returns (address) {
         return address(_rewardToken);
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function getNftCollectionAddress() public view returns (address) {
         return address(_nftCollection);
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function isStakingActive() public view returns (bool) {
         return _stakingActive;
     }
 
     /**
-     * @inheritdoc IIQStaking
+     * @inheritdoc IIQNftStaking
      */
     function nonceCounter(address reserver) external view returns (uint256) {
         return _nonceCounters[reserver].current();
