@@ -65,10 +65,14 @@ async function signAndStakeNfts(
     ],
   };
 
+  const tokenIdsArrayString = tokenIds.map((id) => id.toString());
+
+  console.log('tokenIdsArrayString', tokenIdsArrayString);
+
   const message = {
     staker: stakerAddress,
     nonce: nonce.toString(),
-    tokenIds: tokenIds,
+    tokenIds: tokenIdsArrayString,
   };
 
   const signature = await proofSource.signTypedData(domain, types, message);
@@ -171,6 +175,8 @@ describe('IQ NFT Staking Contract', function () {
 
     //Deploy ERC721Mock
     nftCollection = (await hre.run('deploy:nft-mock', {
+      name: 'Test NFT Collection',
+      symbol: 'TNC',
     })) as ERC721Mock;
 
     //Deploy IQ NFT Staking
@@ -317,7 +323,7 @@ describe('IQ NFT Staking Contract', function () {
   // Ensure correct NFT staking funcftionality.
 
     let rewardToken: ERC20Mock;
-    let oneNftArray: [1];
+    let oneNftArray: number[];
 
     beforeEach(async function () {
 
@@ -331,10 +337,12 @@ describe('IQ NFT Staking Contract', function () {
 
       await nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
 
-      await nftCollection.mint(staker, 1);
-      await nftCollection.mint(staker, 2);
+      oneNftArray = [1];
 
-
+      await nftCollection.connect(deployer).mint(staker, 1);
+      await nftCollection.connect(staker).approve(nftStaking, 1);
+      await nftCollection.connect(deployer).mint(staker, 2);
+      await nftCollection.connect(staker).approve(nftStaking, 2);
     });
 
     it('stake should work corretly', async function () {
