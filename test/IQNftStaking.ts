@@ -106,10 +106,14 @@ async function signAndWithdrawNfts(
     ],
   };
 
+  const tokenIdsArrayString = tokenIds.map((id) => id.toString());
+
+  console.log('tokenIdsArrayString', tokenIdsArrayString);
+
   const message = {
     staker: stakerAddress,
     nonce: nonce.toString(),
-    tokenIds: tokenIds,
+    tokenIds: tokenIdsArrayString,
   };
 
   const signature = await proofSource.signTypedData(domain, types, message);
@@ -224,6 +228,11 @@ describe('IQ NFT Staking Contract', function () {
       await rewardToken.connect(deployer).approve(nftStaking, POOL_SIZE);
     });
 
+    it('stake should not work before tokens deposited to the pool', async function () {
+      await expect(signAndStakeNfts(nftStaking, proofSource, staker, [1])).to.be
+        .revertedWithCustomError(nftStaking, 'StakingNotActive');
+    });
+
     it('depositRewardTokens should deposit tokens correctly', async function () {
 
       const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
@@ -323,7 +332,9 @@ describe('IQ NFT Staking Contract', function () {
   // Ensure correct NFT staking funcftionality.
 
     let rewardToken: ERC20Mock;
-    let oneNftArray: number[];
+    let firstNft = [1];
+    let secondNft = [2];
+    let bothNfts = [1, 2];
 
     beforeEach(async function () {
 
@@ -337,7 +348,7 @@ describe('IQ NFT Staking Contract', function () {
 
       await nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
 
-      oneNftArray = [1];
+
 
       await nftCollection.connect(deployer).mint(staker, 1);
       await nftCollection.connect(staker).approve(nftStaking, 1);
@@ -346,7 +357,60 @@ describe('IQ NFT Staking Contract', function () {
     });
 
     it('stake should work corretly', async function () {
-      await signAndStakeNfts(nftStaking, proofSource, staker, oneNftArray);
+
+      //fist stake
+      await signAndStakeNfts(nftStaking, proofSource, staker, firstNft);
+      expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(firstNft);
+      expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
+
+      //second stake
+      await signAndStakeNfts(nftStaking, proofSource, staker, secondNft);
+      expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(bothNfts);
+      expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
+      expect(await nftStaking.getOwnerOfStakedTokenId(2)).to.equal(staker);
+
+    });
+
+    it('stake should be reverted when double stake the same nft', async function () {
+      await signAndStakeNfts(nftStaking, proofSource, staker, firstNft);
+
+      await expect(signAndStakeNfts(nftStaking, proofSource, staker, firstNft)).to.be
+        .revertedWithCustomError(nftStaking, 'NotTheOwnerOfNft');
+    });
+
+    it('stake should be reverted if nft is not minted', async function () {
+      await expect(signAndStakeNfts(nftStaking, proofSource, staker, [3])).to.be
+        .rejectedWith('ERC721: invalid token ID');
+    });
+
+    it('stake should be reverted if user not the owner of nft', async function () {
+
+      await nftCollection.connect(staker).transferFrom(staker, deployer, 1);
+
+      await expect(signAndStakeNfts(nftStaking, proofSource, staker, [1])).to.be
+        .revertedWithCustomError(nftStaking, 'NotTheOwnerOfNft');
+    });
+
+    it('stake should not work if staking deactivated', async function () {
+
+      nftStaking.deactivateStaking()
+
+      await expect(signAndStakeNfts(nftStaking, proofSource, staker, firstNft)).to.be
+        .revertedWithCustomError(nftStaking, 'StakingNotActive');
+    });
+
+
+    //UNSTAKING PROCESS
+
+    it('withdraw should work corretly', async function () {
+
+      //fist stake
+      await signAndStakeNfts(nftStaking, proofSource, staker, firstNft);
+      //second stake
+      await signAndStakeNfts(nftStaking, proofSource, staker, secondNft);
+
+      await signAndWithdrawNfts(nftStaking, proofSource, staker, bothNfts)
+
     });
 
 });

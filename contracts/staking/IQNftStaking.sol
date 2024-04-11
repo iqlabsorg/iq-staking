@@ -224,7 +224,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
             WITHDRAW_TOKENS_TYPEHASH,
             msg.sender,
             nonce,
-            tokenIds
+            keccak256(abi.encodePacked(tokenIds))
         )));
 
         // verify that signature from backend is correct
