@@ -99,7 +99,7 @@ async function signAndWithdrawNfts(
   };
 
   const types = {
-    Stake: [
+    Withdraw: [
       { name: 'staker', type: 'address' },
       { name: 'nonce', type: 'uint256' },
       { name: 'tokenIds', type: 'uint256[]' },
