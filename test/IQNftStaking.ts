@@ -308,7 +308,7 @@ describe('IQ NFT Staking Contract', function () {
 
   });
 
-  describe('NFT Staking Process', function () {
+  describe('NFT Staking & Unstaking Process', function () {
   // Ensure correct NFT staking funcftionality.
 
     let rewardToken: ERC20Mock;
@@ -332,10 +332,93 @@ describe('IQ NFT Staking Contract', function () {
 
     });
 
-    it('depositRewardTokens should prevent deposits once the pool is already funded', async function () {
-
+    it('stake should work corretly', async function () {
       await signAndStakeNfts(nftStaking, proofSource, staker, oneNftArray);
+    });
 
+});
+
+describe('Tokens Claiming Process', function () {
+  // Ensure correct tokens claiming funcftionality.
+
+    let rewardToken: ERC20Mock;
+
+    beforeEach(async function () {
+
+      //Deploy ERC20Mock and mint pool size to deployer address
+      rewardToken = (await hre.run('deploy:token-mock', {
+        initialSupply: POOL_SIZE.toString(),
+      })) as ERC20Mock;
+
+      //Aprprove tokens for transfering in to reward pool
+      await rewardToken.approve(nftStaking, POOL_SIZE);
+
+      await nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
+
+      await nftCollection.mint(staker, 1);
+      await nftCollection.mint(staker, 2);
+
+      // Assume NFTs were staked as part of the operation.
+      // Given that staking mechanics and calculations are handled server-side, explicit staking within this context is considered extraneous for testing purposes.
+    });
+
+    it('claimTokens should work correctly', async function () {
+
+      let firstClaimedAmount = BigInt(1000);
+      let secondClaimedAmount = BigInt(3000);
+      let fullClaimedAmount = firstClaimedAmount + secondClaimedAmount;
+
+      // Backend verifies the number of NFTs staked, their staking duration, and calculates the claimable tokens.
+      // If the claim exceeds the calculated amount, the signature will not be provided and the transaction will fail.
+      expect(await nftStaking.hasClaimed(staker)).to.equal(false);
+
+
+      //First claim
+      await signAndClaimTokens(nftStaking, proofSource, staker, firstClaimedAmount);
+
+      expect(await nftStaking.hasClaimed(staker)).to.equal(true);
+      expect(await nftStaking.totalTokensClaimed()).to.equal(firstClaimedAmount);
+      expect(await nftStaking.getClaimedTokensByAddress(staker)).to.equal(firstClaimedAmount);
+      expect(await nftStaking.totalTokensLeft()).to.equal(POOL_SIZE-firstClaimedAmount);
+
+      //Second claim
+      await signAndClaimTokens(nftStaking, proofSource, staker, secondClaimedAmount);
+
+      expect(await nftStaking.hasClaimed(staker)).to.equal(true);
+      expect(await nftStaking.totalTokensClaimed()).to.equal(fullClaimedAmount);
+      expect(await nftStaking.getClaimedTokensByAddress(staker)).to.equal(fullClaimedAmount);
+      expect(await nftStaking.totalTokensLeft()).to.equal(POOL_SIZE-fullClaimedAmount);
+
+      //maxPoolSize should not change after claims
+      expect(await nftStaking.showMaxPoolSize()).to.equal(POOL_SIZE);
+    });
+
+    it('claimTokens should be rejected if user claim zero tokens', async function () {
+      await expect(signAndClaimTokens(nftStaking, proofSource, staker, 0)).to.be
+        .revertedWithCustomError(nftStaking, 'CantClaimZero');
+    });
+
+    it('claimTokens should be rejected if user claim more tokens than are available in the pool', async function () {
+
+      let moreThanPoolSize = BigInt(1)+POOL_SIZE;
+
+      // Backend verifies the number of NFTs staked, their staking duration, and calculates the claimable tokens.
+      // If the claim exceeds the calculated amount, the signature will not be provided and the transaction will fail.
+      await expect(signAndClaimTokens(nftStaking, proofSource, staker, moreThanPoolSize)).to.be
+        .revertedWithCustomError(nftStaking, 'InsufficientPoolSize');
+    });
+
+    it('claimTokens should be rejected if pool is empty', async function () {
+
+      let minimalClaimAmount = BigInt(1);
+
+      //First claim
+      await signAndClaimTokens(nftStaking, proofSource, staker, POOL_SIZE);
+      expect(await nftStaking.totalTokensLeft()).to.equal(0);
+
+      //Second claim
+      await expect(signAndClaimTokens(nftStaking, proofSource, staker, minimalClaimAmount)).to.be
+        .revertedWithCustomError(nftStaking, 'InsufficientPoolSize');
     });
 
 });
