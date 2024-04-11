@@ -3,8 +3,40 @@ import { expect } from 'chai';
 import { ethers, run } from 'hardhat';
 import { BigNumberish, Signer, formatUnits, id } from 'ethers';
 import { IQNftStaking, ERC721Mock, ERC20Mock } from '../typechain';
-// import { ERC721Mock } from '@iqprotocol/iq-space-protocol/typechain';
 
+async function signAndWithdrawTokens(
+  nftStaking: IQNftStaking,
+  proofSource: Signer,
+  deployer: Signer,
+  amount: BigNumberish,
+): Promise<string> {
+  const nonce = await nftStaking.nonceCounter(deployer);
+
+  const domain = {
+    name: 'IQStaking',
+    version: '1',
+    chainId: (await ethers.provider.getNetwork()).chainId,
+    stakingContract: await nftStaking.getAddress(),
+  };
+
+  const types = {
+    IQNftStaking: [
+      { name: 'nonce', type: 'uint256' },
+      { name: 'amount', type: 'uint256' },
+    ],
+  };
+
+  const message = {
+    nonce: nonce.toString(),
+    amount: amount.toString(),
+  };
+
+  const signature = await proofSource.signTypedData(domain, types, message);
+
+  await nftStaking.withdrawRewardTokens(amount, signature);
+
+  return signature;
+}
 
 describe('IQ NFT Staking Contract', function () {
 
@@ -42,13 +74,18 @@ describe('IQ NFT Staking Contract', function () {
       expect(await nftStaking.isStakingActive()).to.equal(false);
     });
 
-    it('showMaxPoolSize should show be zero', async function () {
+    it('Pool size should show be zero after deployment', async function () {
       expect(await nftStaking.showMaxPoolSize()).to.equal(0);
+      expect(await nftStaking.totalTokensLeft()).to.equal(0);
+    });
+
+    it('deactivateStaking should be reverted after deployment', async function () {
+      await expect(nftStaking.deactivateStaking()).to.be.revertedWithCustomError(nftStaking, 'StakingNotActive');
     });
 
   });
 
-  describe('Pool Initialization', function () {
+  describe('Reward Pool Initialization', function () {
 
     let rewardToken: ERC20Mock;
 
@@ -99,9 +136,62 @@ describe('IQ NFT Staking Contract', function () {
     it('depositRewardTokens should prevent zero reward frequency', async function () {
       await expect(nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, 0))
     .to.revertedWithCustomError(nftStaking, 'RewardFrequencyMustBePositive');
+    });
+
+    it('deactivateStaking should work after token deposited', async function () {
+
+      await nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
+
+      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
+
+
+      await expect(nftStaking.deactivateStaking()).to.emit(nftStaking, 'StakingDeactivated')
+      .withArgs(currentTimestamp+1);
+      expect(await nftStaking.isStakingActive()).to.equal(false);
+    });
+
+    it('reward tokens should be withdrawable after campaing deactivated', async function () {
+
+      await nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
+
+      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
+
+      await expect(nftStaking.deactivateStaking()).to.emit(nftStaking, 'StakingDeactivated')
+      .withArgs(currentTimestamp+1);
+
+      //our backand prove that staking owner don't owe tokens to anyone
+
+      await signAndWithdrawTokens(nftStaking, proofSource, deployer, POOL_SIZE);
 
     });
 
+  describe('NFT Staking Process', function () {
 
+    let rewardToken: ERC20Mock;
+
+    beforeEach(async function () {
+
+      //Deploy ERC20Mock and mint pool size to deployer address
+      rewardToken = (await hre.run('deploy:token-mock', {
+        initialSupply: POOL_SIZE.toString(),
+      })) as ERC20Mock;
+
+      //Aprprove tokens for transfering in to reward pool
+      await rewardToken.approve(nftStaking, POOL_SIZE);
+
+      await nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
+
+      await nftCollection.mint(staker, 1);
+      await nftCollection.mint(staker, 2);
+
+
+    });
+
+    it('depositRewardTokens should prevent deposits once the pool is already funded', async function () {
+
+
+
+    });
   });
+});
 });
