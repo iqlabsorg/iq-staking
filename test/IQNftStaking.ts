@@ -196,6 +196,10 @@ describe('IQ NFT Staking Contract', function () {
       await expect(nftStaking.deactivateStaking()).to.be.revertedWithCustomError(nftStaking, 'StakingNotActive');
     });
 
+    it('getNftCollectionAddress returns right NFT collection', async function () {
+      expect(await nftStaking.getNftCollectionAddress()).to.equal(nftCollection);
+    });
+
   });
 
   describe('Reward Pool Initialization', function () {
@@ -222,6 +226,7 @@ describe('IQ NFT Staking Contract', function () {
     .to.emit(nftStaking, 'TokensDeposited')
     .withArgs(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY, currentTimestamp+1);
 
+      expect(await nftStaking.getRewardTokenAddress()).to.equal(rewardToken);
       expect(await nftStaking.showMaxPoolSize()).to.equal(POOL_SIZE);
       expect(await nftStaking.totalTokensLeft()).to.equal(POOL_SIZE);
       expect(await nftStaking.getRewardRate()).to.equal(REWARD_RATE);
