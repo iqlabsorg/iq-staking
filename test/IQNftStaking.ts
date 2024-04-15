@@ -474,6 +474,8 @@ describe('Tokens Claiming Process', function () {
       // If the claim exceeds the calculated amount, the signature will not be provided and the transaction will fail.
       expect(await nftStaking.hasClaimed(staker)).to.equal(false);
 
+      let stakerErc20TokensBalance = await rewardToken.balanceOf(staker);
+      expect(stakerErc20TokensBalance).to.equal(0);
 
       //First claim
       await signAndClaimTokens(nftStaking, proofSource, staker, firstClaimedAmount);
@@ -483,6 +485,9 @@ describe('Tokens Claiming Process', function () {
       expect(await nftStaking.getClaimedTokensByAddress(staker)).to.equal(firstClaimedAmount);
       expect(await nftStaking.totalTokensLeft()).to.equal(POOL_SIZE-firstClaimedAmount);
 
+      stakerErc20TokensBalance = await rewardToken.balanceOf(staker);
+      expect(stakerErc20TokensBalance).to.equal(firstClaimedAmount);
+
       //Second claim
       await signAndClaimTokens(nftStaking, proofSource, staker, secondClaimedAmount);
 
@@ -490,6 +495,9 @@ describe('Tokens Claiming Process', function () {
       expect(await nftStaking.totalTokensClaimed()).to.equal(fullClaimedAmount);
       expect(await nftStaking.getClaimedTokensByAddress(staker)).to.equal(fullClaimedAmount);
       expect(await nftStaking.totalTokensLeft()).to.equal(POOL_SIZE-fullClaimedAmount);
+
+      stakerErc20TokensBalance = await rewardToken.balanceOf(staker);
+      expect(stakerErc20TokensBalance).to.equal(fullClaimedAmount);
 
       //maxPoolSize should not change after claims
       expect(await nftStaking.showMaxPoolSize()).to.equal(POOL_SIZE);

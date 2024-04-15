@@ -190,6 +190,9 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
         // verify that signature from backend is correct
         require(_verifySignature(_proofSource, digest, signature));
 
+        // transfer tokens to staker
+        _rewardToken.transfer(staker, amount);
+
         // execute claim logic
         _claimedTokens[staker] += amount;
         _totalTokensClaimed += amount;
