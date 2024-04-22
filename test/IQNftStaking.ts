@@ -41,6 +41,43 @@ async function signAndWithdrawTokens(
   return signature;
 }
 
+async function signAndDeactivateStaking(
+  nftStaking: IQNftStaking,
+  proofSource: Signer,
+  deactivator: Signer,
+  totalRewardAccrued: BigNumberish,
+): Promise<string> {
+  const deactivatorAddress = await deactivator.getAddress();
+  const nonce = await nftStaking.nonceCounter(deactivator);
+
+  const domain = {
+    name: 'IQNftStaking',
+    version: '1',
+    chainId: (await ethers.provider.getNetwork()).chainId,
+    verifyingContract: await nftStaking.getAddress(),
+  };
+
+  const types = {
+    DeactivateStaking: [
+      { name: 'deactivator', type: 'address' },
+      { name: 'totalRewardAccrued', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
+    ],
+  };
+
+  const message = {
+    deactivator: deactivatorAddress,
+    totalRewardAccrued: totalRewardAccrued.toString(),
+    nonce: nonce.toString(),
+  };
+
+  const signature = await proofSource.signTypedData(domain, types, message);
+
+  await nftStaking.connect(deactivator).deactivateStaking(totalRewardAccrued, signature);
+
+  return signature;
+}
+
 async function signAndStakeNfts(
   nftStaking: IQNftStaking,
   proofSource: Signer,
@@ -203,7 +240,7 @@ describe('IQ NFT Staking Contract', function () {
     });
 
     it('deactivateStaking should be reverted after deployment', async function () {
-      await expect(nftStaking.deactivateStaking()).to.be.revertedWithCustomError(nftStaking, 'StakingNotActive');
+      await expect(signAndDeactivateStaking(nftStaking, proofSource, deployer, 1000)).to.be.revertedWithCustomError(nftStaking, 'StakingNotActive');
     });
 
     it('getNftCollectionAddress returns right NFT collection', async function () {
@@ -276,20 +313,15 @@ describe('IQ NFT Staking Contract', function () {
 
       await nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
 
-      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
+      await signAndDeactivateStaking(nftStaking, proofSource, deployer, POOL_SIZE);
 
-      await expect(nftStaking.deactivateStaking()).to.emit(nftStaking, 'StakingDeactivated')
-      .withArgs(currentTimestamp+1);
       expect(await nftStaking.isStakingActive()).to.equal(false);
     });
 
     it('withdrawRewardTokens should be withdrawable after campaing deactivated', async function () {
       await nftStaking.connect(deployer).depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
 
-      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
-
-      await expect(nftStaking.deactivateStaking()).to.emit(nftStaking, 'StakingDeactivated')
-        .withArgs(currentTimestamp+1);
+      await signAndDeactivateStaking(nftStaking, proofSource, deployer, POOL_SIZE);
 
       // signAndWithdrawTokens verify that the staking owner can withdraw only the amount of tokens they do not owe.
       // Signature will not be provided, transaction fails if there is a debt.
@@ -303,10 +335,7 @@ describe('IQ NFT Staking Contract', function () {
     it('withdrawRewardTokens should be rejected if amount = 0', async function () {
       await nftStaking.connect(deployer).depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
 
-      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
-
-      await expect(nftStaking.deactivateStaking()).to.emit(nftStaking, 'StakingDeactivated')
-        .withArgs(currentTimestamp+1);
+      await signAndDeactivateStaking(nftStaking, proofSource, deployer, POOL_SIZE);
 
       // signAndWithdrawTokens verify that the staking owner can withdraw only the amount of tokens they do not owe.
       // Signature will not be provided, transaction fails if there is a debt.
@@ -332,6 +361,7 @@ describe('IQ NFT Staking Contract', function () {
   // Ensure correct NFT staking funcftionality.
 
     let rewardToken: ERC20Mock;
+    let accruedRewards = 1000;
     let firstNft = [1];
     let secondNft = [2];
     let bothNfts = [1, 2];
@@ -391,7 +421,7 @@ describe('IQ NFT Staking Contract', function () {
 
     it('stake should not work if staking deactivated', async function () {
 
-      nftStaking.deactivateStaking()
+      await signAndDeactivateStaking(nftStaking, proofSource, deployer, accruedRewards)
 
       await expect(signAndStakeNfts(nftStaking, proofSource, staker, firstNft)).to.be
         .revertedWithCustomError(nftStaking, 'StakingNotActive');
