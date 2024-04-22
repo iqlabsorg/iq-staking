@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IIQNftStaking.sol";
 
 
-contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
+contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, ReentrancyGuard {
     using Counters for Counters.Counter;
     using SafeERC20 for IERC20;
 
@@ -183,16 +183,19 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
         require(_verifySignature(_proofSource, digest, signature));
 
         // execute staking logic
-        for (uint i = 0; i < tokenIds.length; i++) {
-            if (_nftCollection.ownerOf(tokenIds[i]) != msg.sender) revert NotTheOwnerOfNft();
+        for (uint i = 0; i < tokenIds.length; ++i) {
+            unchecked {
+                if (_nftCollection.ownerOf(tokenIds[i]) != msg.sender) revert NotTheOwnerOfNft();
 
-            _nftCollection.transferFrom(msg.sender, address(this), tokenIds[i]);
+                _nftCollection.transferFrom(msg.sender, address(this), tokenIds[i]);
 
-            // Add the token to the staked array and map its index
-            _stakedTokens[msg.sender].push(tokenIds[i]);
-            _stakedTokenIndexes[tokenIds[i]] = _stakedTokens[msg.sender].length - 1;
-            _tokenOwners[tokenIds[i]] = msg.sender;
+                // Add the token to the staked array and map its index
+                _stakedTokens[msg.sender].push(tokenIds[i]);
+                _stakedTokenIndexes[tokenIds[i]] = _stakedTokens[msg.sender].length - 1;
+                _tokenOwners[tokenIds[i]] = msg.sender;
+            }
         }
+
 
         // emit event
         emit Staked(msg.sender, tokenIds, block.timestamp);
@@ -228,9 +231,9 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
         _rewardToken.safeTransfer(staker, amount);
 
         // execute claim logic
-        _claimedTokens[staker] += amount;
-        _totalTokensClaimed += amount;
-        _totalTokensLeft -= amount;
+        _claimedTokens[staker] = _claimedTokens[staker] + amount;
+        _totalTokensClaimed = _totalTokensClaimed + amount;
+        _totalTokensLeft = _totalTokensLeft - amount;
 
         // emit event
         emit TokensClaimed(staker, amount, block.timestamp);
@@ -244,11 +247,13 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
         bytes calldata signature
     ) external nonReentrant {
         // check that staker is the owner of the NFTs
-        for (uint i = 0; i < tokenIds.length; i++) {
-            // check that NFT is owned by this contract currently
-            if (_nftCollection.ownerOf(tokenIds[i]) != address(this)) revert NftNotStaked();
-            // check that staker is the owner of the NFT
-            if (_tokenOwners[tokenIds[i]] != msg.sender) revert NotTheOwnerOfNft();
+        for (uint i = 0; i < tokenIds.length; ++i) {
+            unchecked {
+                // check that NFT is owned by this contract currently
+                if (_nftCollection.ownerOf(tokenIds[i]) != address(this)) revert NftNotStaked();
+                // check that staker is the owner of the NFT
+                if (_tokenOwners[tokenIds[i]] != msg.sender) revert NotTheOwnerOfNft();
+            }
         }
 
         // verify nonce
@@ -265,11 +270,13 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
         // verify that signature from backend is correct
         require(_verifySignature(_proofSource, digest, signature));
 
-        for (uint i = 0; i < tokenIds.length; i++) {
-            // transfer NFT back to staker
-            _nftCollection.transferFrom(address(this), msg.sender, tokenIds[i]);
-            // remove NFT from staking
-            _removeNftFromStaking(msg.sender, tokenIds[i]);
+        for (uint i = 0; i < tokenIds.length; ++i) {
+            unchecked {
+                // transfer NFT back to staker
+                _nftCollection.transferFrom(address(this), msg.sender, tokenIds[i]);
+                // remove NFT from staking
+                _removeNftFromStaking(msg.sender, tokenIds[i]);
+            }
         }
 
         // emit event
@@ -337,8 +344,8 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
 
         _rewardToken.safeTransfer(msg.sender, amount);
 
-        _tokensWithdrawedByOwner += amount;
-        _totalTokensLeft -= amount;
+        _tokensWithdrawedByOwner = _tokensWithdrawedByOwner + amount;
+        _totalTokensLeft = _totalTokensLeft - amount;
         _tokensWithdrawn = true;
 
         emit TokensWithdrawedByOwner(amount);
