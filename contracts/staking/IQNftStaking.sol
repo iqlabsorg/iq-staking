@@ -50,11 +50,11 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
     );
 
     /**
-     * @dev EIP-712 type hash for withdrawing reward tokens by the owner. Used in the withdrawRewardTokens function to securely withdraw tokens from the contract.
-     * This type hash includes the address of the withdrawer, the amount of tokens to withdraw, and a nonce for replay protection.
+     * @dev EIP-712 type hash for withdrawing reward tokens by the owner. Used in the deactivateStaking function to securely deactivate staking.
+     * This type hash includes the address of the deactivator, the quantity of reward tokens accrued, and a nonce for replay protection.
      */
     bytes32 private constant DEACTIVATE_STAKING_TYPEHASH = keccak256(
-        "DeactivateStaking(address totalTokensStaked)"
+        "DeactivateStaking(address deactivator,uint256 totalRewardAccrued,uint256 nonce)"
     );
 
     /**
@@ -330,7 +330,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
 
         _rewardToken.safeTransfer(msg.sender, amount);
 
-        _tokensWithdrawedByOwner = amount;
+        _tokensWithdrawedByOwner += amount;
         _tokensWithdrawn = true;
 
         emit TokensWithdrawedByOwner(amount);
@@ -344,6 +344,16 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
         if (totalRewardAccrued == 0) revert ZeroTotalAccruedValue();
         if (totalRewardAccrued > _poolSize) revert TotalAccruedIsBiggerThanPoolSize();
 
+        uint256 nonce = _useNonce(msg.sender);
+
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            DEACTIVATE_STAKING_TYPEHASH,
+            msg.sender,
+            totalRewardAccrued,
+            nonce
+        )));
+
+        require(_verifySignature(_proofSource, digest, signature));
 
         _stakingActive = false;
         _totalRewardAccrued = totalRewardAccrued;

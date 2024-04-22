@@ -178,8 +178,10 @@ interface IIQNftStaking {
     /**
      * @dev Deactivates staking, preventing any new stakes.
      * @notice Can be called only by staking owner.
+     * @param totalRewardAccrued Quantity of tokens that users have earned and cannot be withdrawn.
+     * @param signature The signature verifying the deactivation.
      */
-    function deactivateStaking() external;
+    function deactivateStaking(uint256 totalRewardAccrued, bytes calldata signature) external;
 
     /**
      * @dev Returns the owner address of the specified staked token ID.
