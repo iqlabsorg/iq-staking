@@ -315,6 +315,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
         if (_stakingActive) revert StakingShouldBeDeactivated();
         if (amount == 0) revert CantWithdrawZero();
         if (_tokensWithdrawn) revert TokensAlreadyWithdrawn();
+        if (amount > _poolSize - _totalTokensClaimed) revert InvalidWithdrawAmountIsBiggerThanLeft();
 
         uint256 nonce = _useNonce(msg.sender);
 
@@ -345,6 +346,8 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
 
 
         _stakingActive = false;
+        _totalRewardAccrued = totalRewardAccrued;
+
         emit StakingDeactivated(block.timestamp);
     }
 

@@ -84,6 +84,11 @@ interface IIQNftStaking {
     error TotalAccruedIsBiggerThanPoolSize();
 
     /**
+     * @notice Thrown when an attempt is made to withdraw more than the total accrued value.
+     */
+    error InvalidWithdrawAmountIsBiggerThanLeft();
+
+    /**
      * @notice Emitted when a staker claims their reward tokens.
      * @param staker The address of the staker claiming tokens.
      * @param amount The amount of tokens claimed.
