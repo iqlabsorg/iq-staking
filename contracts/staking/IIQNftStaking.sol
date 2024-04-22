@@ -68,6 +68,20 @@ interface IIQNftStaking {
      */
     error RewardFrequencyMustBePositive();
 
+    /**
+     * @notice Thrown when an attempt is made to withdraw more than once.
+     */
+    error TokensAlreadyWithdrawn();
+
+    /**
+     * @notice Thrown when an attempt is made to withdraw more than the total accrued value.
+     */
+    error ZeroTotalAccruedValue();
+
+    /**
+     * @notice Thrown when an attempt is made to withdraw more than the total accrued value.
+     */
+    error TotalAccruedIsBiggerThanPoolSize();
 
     /**
      * @notice Emitted when a staker claims their reward tokens.

@@ -8,11 +8,14 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IIQNftStaking.sol";
 
+
 contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGuard {
     using Counters for Counters.Counter;
+    using SafeERC20 for IERC20;
 
     /**
      * @dev EIP-712 type hash for staking tokens. Used in the stake function to securely stake tokens.
@@ -44,6 +47,14 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
      */
     bytes32 private constant WITHDRAW_REWARD_TOKENS_TYPEHASH = keccak256(
         "WithdrawRewardTokens(address withdrawer,uint256 amount,uint256 nonce)"
+    );
+
+    /**
+     * @dev EIP-712 type hash for withdrawing reward tokens by the owner. Used in the withdrawRewardTokens function to securely withdraw tokens from the contract.
+     * This type hash includes the address of the withdrawer, the amount of tokens to withdraw, and a nonce for replay protection.
+     */
+    bytes32 private constant DEACTIVATE_STAKING_TYPEHASH = keccak256(
+        "DeactivateStaking(address totalTokensStaked)"
     );
 
     /**
@@ -83,6 +94,12 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
     uint256 private _rewardFrequency;
 
     /**
+     * @dev Indicates total amount of accrued rewards for staked tokens.
+     * Used for scenario, when pool owner terminates staking.
+     */
+    uint256 private _totalRewardAccrued;
+
+    /**
      * @dev Indicates total quantity of claimed tokens.
      */
     uint256 private _totalTokensClaimed;
@@ -98,9 +115,19 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
     bool private _stakingActive;
 
     /**
+     * @dev Indicates the status of tokens withdrawed by owner.
+     */
+    bool private _tokensWithdrawn;
+
+    /**
      * @dev Indicates staked tokens by address.
      */
     mapping(address => uint256[]) private _stakedTokens;
+
+    /**
+     * @dev Indicates indexes of staked tokens.
+    */
+    mapping(uint256 => uint256) private _stakedTokenIndexes;
 
     /**
      * @dev Indicates owners of staked tokens.
@@ -156,7 +183,9 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
 
             _nftCollection.transferFrom(msg.sender, address(this), tokenIds[i]);
 
+            // Add the token to the staked array and map its index
             _stakedTokens[msg.sender].push(tokenIds[i]);
+            _stakedTokenIndexes[tokenIds[i]] = _stakedTokens[msg.sender].length - 1;
             _tokenOwners[tokenIds[i]] = msg.sender;
         }
 
@@ -190,8 +219,8 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
         // verify that signature from backend is correct
         require(_verifySignature(_proofSource, digest, signature));
 
-        // transfer tokens to staker
-        _rewardToken.transfer(staker, amount);
+        // safe transfer tokens to staker
+        _rewardToken.safeTransfer(staker, amount);
 
         // execute claim logic
         _claimedTokens[staker] += amount;
@@ -242,15 +271,20 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
     }
 
     function _removeNftFromStaking(address user, uint256 tokenId) private {
-        uint256[] storage stakedTokens = _stakedTokens[user];
-        for (uint i = 0; i < stakedTokens.length; i++) {
-            if (stakedTokens[i] == tokenId) {
-                stakedTokens[i] = stakedTokens[stakedTokens.length - 1];
-                stakedTokens.pop();
-                break;
-            }
+        uint256 lastTokenIndex = _stakedTokens[user].length - 1;
+        uint256 tokenIndex = _stakedTokenIndexes[tokenId];
+
+        // Move the last token to the place of the one to be removed
+        if (tokenIndex != lastTokenIndex) {
+            uint256 lastTokenId = _stakedTokens[user][lastTokenIndex];
+            _stakedTokens[user][tokenIndex] = lastTokenId;
+            _stakedTokenIndexes[lastTokenId] = tokenIndex;
         }
-        delete _tokenOwners[tokenId];
+
+        // Remove the last element (now duplicated)
+        _stakedTokens[user].pop();
+        delete _stakedTokenIndexes[tokenId]; // Remove the index tracking
+        delete _tokenOwners[tokenId]; // Update ownership mapping
     }
 
     /**
@@ -269,7 +303,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
         _rewardRate = rewardRate;
         _rewardFrequency = rewardFrequency;
 
-        _rewardToken.transferFrom(msg.sender, address(this), _poolSize);
+        _rewardToken.safeTransferFrom(msg.sender, address(this), _poolSize);
         _stakingActive = true;
         emit TokensDeposited(rewardTokenAddress, _poolSize, _rewardRate, _rewardFrequency, block.timestamp);
     }
@@ -280,6 +314,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
     function withdrawRewardTokens(uint256 amount, bytes calldata signature) external onlyOwner {
         if (_stakingActive) revert StakingShouldBeDeactivated();
         if (amount == 0) revert CantWithdrawZero();
+        if (_tokensWithdrawn) revert TokensAlreadyWithdrawn();
 
         uint256 nonce = _useNonce(msg.sender);
 
@@ -292,9 +327,10 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
 
         require(_verifySignature(_proofSource, digest, signature));
 
-        _rewardToken.transfer(msg.sender, amount);
+        _rewardToken.safeTransfer(msg.sender, amount);
 
         _tokensWithdrawedByOwner = amount;
+        _tokensWithdrawn = true;
 
         emit TokensWithdrawedByOwner(amount);
     }
@@ -302,8 +338,12 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
     /**
      * @inheritdoc IIQNftStaking
      */
-    function deactivateStaking() external onlyOwner {
+    function deactivateStaking(uint256 totalRewardAccrued, bytes calldata signature) external onlyOwner {
         if (!_stakingActive) revert StakingNotActive();
+        if (totalRewardAccrued == 0) revert ZeroTotalAccruedValue();
+        if (totalRewardAccrued > _poolSize) revert TotalAccruedIsBiggerThanPoolSize();
+
+
         _stakingActive = false;
         emit StakingDeactivated(block.timestamp);
     }
