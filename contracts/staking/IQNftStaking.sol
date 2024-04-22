@@ -110,6 +110,11 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
     uint256 private _tokensWithdrawedByOwner;
 
     /**
+     * @dev Indicates total quantity of tokens left in the pool.
+     */
+    uint256 private _totalTokensLeft;
+
+    /**
      * @dev Indicates the status of staking pool.
      */
     bool private _stakingActive;
@@ -225,6 +230,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
         // execute claim logic
         _claimedTokens[staker] += amount;
         _totalTokensClaimed += amount;
+        _totalTokensLeft -= amount;
 
         // emit event
         emit TokensClaimed(staker, amount, block.timestamp);
@@ -300,6 +306,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
 
         _rewardToken = IERC20(rewardTokenAddress);
         _poolSize = tokensPoolSize;
+        _totalTokensLeft = tokensPoolSize;
         _rewardRate = rewardRate;
         _rewardFrequency = rewardFrequency;
 
@@ -331,6 +338,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
         _rewardToken.safeTransfer(msg.sender, amount);
 
         _tokensWithdrawedByOwner += amount;
+        _totalTokensLeft -= amount;
         _tokensWithdrawn = true;
 
         emit TokensWithdrawedByOwner(amount);
@@ -407,7 +415,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable, ReentrancyGu
      * @inheritdoc IIQNftStaking
      */
     function totalTokensLeft() public view returns (uint256) {
-        return _poolSize - _totalTokensClaimed - _tokensWithdrawedByOwner;
+        return _totalTokensLeft;
     }
 
     /**
