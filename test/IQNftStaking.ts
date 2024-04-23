@@ -41,6 +41,41 @@ async function signAndWithdrawTokens(
   return signature;
 }
 
+async function generateWithdrawTokensSignature(
+  nftStaking: IQNftStaking,
+  proofSource: Signer,
+  withdrawer: Signer,
+  amount: BigNumberish,
+): Promise<string> {
+  const withdrawerAddress = await withdrawer.getAddress();
+  const nonce = await nftStaking.nonceCounter(withdrawer);
+
+  const domain = {
+    name: 'IQNftStaking',
+    version: '1',
+    chainId: (await ethers.provider.getNetwork()).chainId,
+    verifyingContract: await nftStaking.getAddress(),
+  };
+
+  const types = {
+    WithdrawRewardTokens: [
+      { name: 'withdrawer', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
+    ],
+  };
+
+  const message = {
+    withdrawer: withdrawerAddress,
+    amount: amount.toString(),
+    nonce: nonce.toString(),
+  };
+
+  const signature = await proofSource.signTypedData(domain, types, message);
+
+  return signature;
+}
+
 async function signAndDeactivateStaking(
   nftStaking: IQNftStaking,
   proofSource: Signer,
@@ -74,6 +109,41 @@ async function signAndDeactivateStaking(
   const signature = await proofSource.signTypedData(domain, types, message);
 
   await nftStaking.connect(deactivator).deactivateStaking(totalRewardAccrued, signature);
+
+  return signature;
+}
+
+async function generateDeactivateStakingSignature(
+  nftStaking: IQNftStaking,
+  proofSource: Signer,
+  deactivator: Signer,
+  totalRewardAccrued: BigNumberish,
+): Promise<string> {
+  const deactivatorAddress = await deactivator.getAddress();
+  const nonce = await nftStaking.nonceCounter(deactivator);
+
+  const domain = {
+    name: 'IQNftStaking',
+    version: '1',
+    chainId: (await ethers.provider.getNetwork()).chainId,
+    verifyingContract: await nftStaking.getAddress(),
+  };
+
+  const types = {
+    DeactivateStaking: [
+      { name: 'deactivator', type: 'address' },
+      { name: 'totalRewardAccrued', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
+    ],
+  };
+
+  const message = {
+    deactivator: deactivatorAddress,
+    totalRewardAccrued: totalRewardAccrued.toString(),
+    nonce: nonce.toString(),
+  };
+
+  const signature = await proofSource.signTypedData(domain, types, message);
 
   return signature;
 }
@@ -119,6 +189,44 @@ async function signAndStakeNfts(
   return signature;
 }
 
+async function generateStakeNftsSignature(
+  nftStaking: IQNftStaking,
+  proofSource: Signer,
+  staker: Signer,
+  tokenIds: BigNumberish[],
+): Promise<string> {
+  const stakerAddress = await staker.getAddress();
+  const nonce = await nftStaking.nonceCounter(staker);
+
+  const domain = {
+    name: 'IQNftStaking',
+    version: '1',
+    chainId: (await ethers.provider.getNetwork()).chainId,
+    verifyingContract: await nftStaking.getAddress(),
+  };
+
+  const types = {
+    Stake: [
+      { name: 'staker', type: 'address' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'tokenIds', type: 'uint256[]' },
+    ],
+  };
+
+  const tokenIdsArrayString = tokenIds.map((id) => id.toString());
+
+  const message = {
+    staker: stakerAddress,
+    nonce: nonce.toString(),
+    tokenIds: tokenIdsArrayString,
+  };
+
+  const signature = await proofSource.signTypedData(domain, types, message);
+
+  return signature;
+}
+
+
 async function signAndWithdrawNfts(
   nftStaking: IQNftStaking,
   proofSource: Signer,
@@ -160,6 +268,43 @@ async function signAndWithdrawNfts(
   return signature;
 }
 
+async function generateWithdrawNftsSignature(
+  nftStaking: IQNftStaking,
+  proofSource: Signer,
+  staker: Signer,
+  tokenIds: BigNumberish[],
+): Promise<string> {
+  const stakerAddress = await staker.getAddress();
+  const nonce = await nftStaking.nonceCounter(staker);
+
+  const domain = {
+    name: 'IQNftStaking',
+    version: '1',
+    chainId: (await ethers.provider.getNetwork()).chainId,
+    verifyingContract: await nftStaking.getAddress(),
+  };
+
+  const types = {
+    Withdraw: [
+      { name: 'staker', type: 'address' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'tokenIds', type: 'uint256[]' },
+    ],
+  };
+
+  const tokenIdsArrayString = tokenIds.map((id) => id.toString());
+
+  const message = {
+    staker: stakerAddress,
+    nonce: nonce.toString(),
+    tokenIds: tokenIdsArrayString,
+  };
+
+  const signature = await proofSource.signTypedData(domain, types, message);
+
+  return signature;
+}
+
 async function signAndClaimTokens(
   nftStaking: IQNftStaking,
   proofSource: Signer,
@@ -196,6 +341,42 @@ async function signAndClaimTokens(
 
   return signature;
 }
+
+async function generateClaimTokensSignature(
+  nftStaking: IQNftStaking,
+  proofSource: Signer,
+  staker: Signer,
+  amount: BigNumberish,
+): Promise<string> {
+  const stakerAddress = await staker.getAddress();
+  const nonce = await nftStaking.nonceCounter(staker);
+
+  const domain = {
+    name: 'IQNftStaking',
+    version: '1',
+    chainId: (await ethers.provider.getNetwork()).chainId,
+    verifyingContract: await nftStaking.getAddress(),
+  };
+
+  const types = {
+    ClaimTokens: [
+      { name: 'staker', type: 'address' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'amount', type: 'uint256' },
+    ],
+  };
+
+  const message = {
+    staker: stakerAddress,
+    nonce: nonce.toString(),
+    amount: amount.toString(),
+  };
+
+  const signature = await proofSource.signTypedData(domain, types, message);
+
+  return signature;
+}
+
 
 describe('IQ NFT Staking Contract', function () {
 
@@ -318,6 +499,17 @@ describe('IQ NFT Staking Contract', function () {
       expect(await nftStaking.isStakingActive()).to.equal(false);
     });
 
+    it('deactivateStaking should emit StakingDeactivated event', async function () {
+
+      await nftStaking.connect(deployer).depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY) ;
+      const signature = await generateDeactivateStakingSignature(nftStaking, proofSource, deployer, POOL_SIZE);
+      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
+
+      await expect(nftStaking.connect(deployer).deactivateStaking(POOL_SIZE, signature)).to.emit(nftStaking,
+      "StakingDeactivated").withArgs(currentTimestamp+1)
+    });
+
+
     it('withdrawRewardTokens should be withdrawable after campaing deactivated', async function () {
       await nftStaking.connect(deployer).depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
 
@@ -328,7 +520,17 @@ describe('IQ NFT Staking Contract', function () {
 
       await signAndWithdrawTokens(nftStaking, proofSource, deployer, POOL_SIZE);
 
-      //expect(signAndWithdrawTokens(nftStaking, proofSource, deployer, POOL_SIZE).to.emit(nftStaking, 'TokensWithdrawedByOwner').withArgs(POOL_SIZE));
+      expect(await nftStaking.totalTokensLeft()).to.equal(0);
+    });
+
+    it('withdrawRewardTokens should emit TokensWithdrawedByOwner event', async function () {
+      await nftStaking.connect(deployer).depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
+
+      await signAndDeactivateStaking(nftStaking, proofSource, deployer, POOL_SIZE);
+
+      const signature = await generateWithdrawTokensSignature(nftStaking, proofSource, deployer, POOL_SIZE);
+
+      expect(await nftStaking.withdrawRewardTokens(POOL_SIZE, signature)).to.emit(nftStaking, 'TokensWithdrawedByOwner').withArgs(POOL_SIZE);
       expect(await nftStaking.totalTokensLeft()).to.equal(0);
     });
 
@@ -384,7 +586,16 @@ describe('IQ NFT Staking Contract', function () {
       await nftCollection.connect(staker).approve(nftStaking, 2);
     });
 
-    it('stake should work corretly', async function () {
+    it('stake should emit Staked event correctly', async function () {
+
+      const signature = await generateStakeNftsSignature(nftStaking, proofSource, staker, firstNft);
+
+      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
+
+      expect(await nftStaking.connect(staker).stake(firstNft, signature)).to.emit(nftStaking, 'Staked').withArgs(staker, firstNft, currentTimestamp);
+    });
+
+    it('stake should work correctly', async function () {
 
       //fist stake
       await signAndStakeNfts(nftStaking, proofSource, staker, firstNft);
@@ -435,6 +646,22 @@ describe('IQ NFT Staking Contract', function () {
       expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
 
       await signAndWithdrawNfts(nftStaking, proofSource, staker, firstNft)
+
+      expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal([]);
+      expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(ZeroAddress);
+    });
+
+    it('withdraw should emit WithdrawStakedTokens correctly', async function () {
+
+      await signAndStakeNfts(nftStaking, proofSource, staker, firstNft);
+
+      expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(firstNft);
+      expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
+
+      const signature = await generateWithdrawNftsSignature(nftStaking, proofSource, staker, firstNft);
+      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
+
+      expect(await nftStaking.connect(staker).withdraw(firstNft, signature)).to.emit(nftStaking, 'WithdrawStakedTokens').withArgs(staker, firstNft, currentTimestamp+1);
 
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal([]);
       expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(ZeroAddress);
@@ -531,6 +758,23 @@ describe('Tokens Claiming Process', function () {
 
       //maxPoolSize should not change after claims
       expect(await nftStaking.showMaxPoolSize()).to.equal(POOL_SIZE);
+    });
+
+    it('claimTokens should emit TokensClaimed correctly', async function () {
+
+      let firstClaimedAmount = BigInt(3000);
+
+      // Backend verifies the number of NFTs staked, their staking duration, and calculates the claimable tokens.
+      // If the claim exceeds the calculated amount, the signature will not be provided and the transaction will fail.
+      expect(await nftStaking.hasClaimed(staker)).to.equal(false);
+
+      let stakerErc20TokensBalance = await rewardToken.balanceOf(staker);
+      expect(stakerErc20TokensBalance).to.equal(0);
+
+      const signature = await generateClaimTokensSignature(nftStaking, proofSource, staker, firstClaimedAmount);
+      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
+
+      expect(await nftStaking.claimTokens(staker, firstClaimedAmount, signature)).to.emit(nftStaking, 'TokensClaimed').withArgs(staker, firstClaimedAmount, currentTimestamp+1);
     });
 
     it('claimTokens should be rejected if user claim zero tokens', async function () {
