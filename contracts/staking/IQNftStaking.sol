@@ -344,7 +344,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
 
         _rewardToken.safeTransfer(msg.sender, amount);
 
-        _tokensWithdrawedByOwner = _tokensWithdrawedByOwner + amount;
+        _tokensWithdrawedByOwner = amount;
         _totalTokensLeft = _totalTokensLeft - amount;
         _tokensWithdrawn = true;
 
