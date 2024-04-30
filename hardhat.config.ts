@@ -58,9 +58,24 @@ const config: HardhatUserConfig = {
       accounts,
       timeout: 40000,
     },
+    ancient8Testnet: {
+      url: 'https://rpcv2-testnet.ancient8.gg',
+      accounts,
+      timeout: 40000,
+    },
   },
   etherscan: {
     apiKey: env.parsed?.ETHERSCAN_API_KEY,
+    customChains: [
+      {
+        network: "ancient8Testnet",
+        chainId: 28122024,
+        urls: {
+          apiURL: "https://scanv2-testnet.ancient8.gg/api/",
+          browserURL: "https://scanv2-testnet.ancient8.gg/"
+        }
+      }
+    ]
   },
   sourcify: {
     // Disabled by default
