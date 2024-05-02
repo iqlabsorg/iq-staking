@@ -5,7 +5,7 @@
 ## Running the Repository
 
 **Clone the Repository**: `git clone https://github.com/iqlabsorg/iq-staking.git`  
-**Setup dependencies**: Navigate to the repository directory and run: `cd iq-staking`, `yarn install` & `yarn compile`  
+**Setup dependencies**: Navigate to the repository `cd iq-staking` and run: `yarn install` & `yarn compile`  
 **Execute Tests**: To run tests use: `yarn hardhat test`  
 **Deploying the Staking Contract**:  
 Fill **.env** and use the following command:  
