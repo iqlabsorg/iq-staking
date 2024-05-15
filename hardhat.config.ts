@@ -14,6 +14,7 @@ const env = dotenv.config();
 import './tasks/deploy-nft-staking';
 import './tasks/deploy-nft-mock';
 import './tasks/deploy-token-mock';
+import './tasks/deploy-staking-manager';
 
 
 

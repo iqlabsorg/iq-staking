@@ -52,7 +52,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
     /**
      * @dev Constructor for the StakingManager contract.
      * @param proofSource Address of the backend that will provide the signature for transaction verifications.
-     * @param deploymentPrice Amount of IQ Staking deployment fee.
+     * @param deploymentPrice Amount of fee for IQ Staking deployment.
      * @param batchTransactionFee Amount of fee for each staked subsequent NFT in a batch.
     */
     constructor(
