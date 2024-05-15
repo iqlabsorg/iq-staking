@@ -173,22 +173,22 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         bytes calldata signature
     ) external nonReentrant {
         // check if staking is active
-        if (msg.sender == _stakingManager) revert CallerIsNotStakingManager();
+        if (msg.sender != _stakingManager) revert CallerIsNotStakingManager();
         if (!_stakingActive) revert StakingNotActive();
 
         // verify nonce
-        uint256 nonce = _useNonce(msg.sender);
+        // uint256 nonce = _useNonce(msg.sender);
 
-        // generate typed data signature for verification
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
-            STAKE_TOKENS_TYPEHASH,
-            msg.sender,
-            nonce,
-            keccak256(abi.encodePacked(tokenIds))
-        )));
+        // // generate typed data signature for verification
+        // bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+        //     STAKE_TOKENS_TYPEHASH,
+        //     msg.sender,
+        //     nonce,
+        //     keccak256(abi.encodePacked(tokenIds))
+        // )));
 
-        // verify that signature from backend is correct
-        require(_verifySignature(_proofSource, digest, signature));
+        // // verify that signature from backend is correct
+        // require(_verifySignature(_proofSource, digest, signature));
 
         // execute staking logic
         for (uint i = 0; i < tokenIds.length; ++i) {
