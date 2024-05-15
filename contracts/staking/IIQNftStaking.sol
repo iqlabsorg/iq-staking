@@ -9,6 +9,11 @@ interface IIQNftStaking {
     error InvalidProofSourceAddress();
 
     /**
+     * @dev Thrown when caller of stake function is not Staking Manager.
+     */
+    error CallerIsNotStakingManager();
+
+    /**
      * @dev Thrown when the pool size is insufficient for a new staking action.
      */
     error InsufficientPoolSize();
@@ -252,6 +257,18 @@ interface IIQNftStaking {
      * @return The contract address of the NFT collection.
      */
     function getNftCollectionAddress() external view returns (address);
+
+    /**
+     * @dev Get the Staking Manager address.
+     * @return Staking Manager address.
+     */
+    function getStakingManagerAddress() external view returns (address);
+
+    /**
+     * @dev Get the proof source address.
+     * @return Proof source address.
+     */
+    function getProofSourceAddress() external view returns (address);
 
     /**
      * @dev Checks if staking is currently active.

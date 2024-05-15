@@ -79,6 +79,11 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     address private _proofSource;
 
     /**
+     * @dev Indicates IQ Staking Manager address.
+     */
+    address private _stakingManager;
+
+    /**
      * @dev Indicates maximum pool size.
      */
     uint256 private _poolSize;
@@ -151,10 +156,12 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     */
     constructor(
         address proofSource,
+        address stakingManager,
         address nftCollectionAddress
     ) EIP712("IQNftStaking", "1") {
         if (proofSource == address(0)) revert InvalidProofSourceAddress();
         _proofSource = proofSource;
+        _stakingManager = stakingManager;
         _nftCollection = IERC721(nftCollectionAddress);
     }
 
@@ -166,6 +173,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         bytes calldata signature
     ) external nonReentrant {
         // check if staking is active
+        if (msg.sender == _stakingManager) revert CallerIsNotStakingManager();
         if (!_stakingActive) revert StakingNotActive();
 
         // verify nonce
@@ -451,6 +459,20 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
      */
     function getNftCollectionAddress() public view returns (address) {
         return address(_nftCollection);
+    }
+
+    /**
+     * @inheritdoc IIQNftStaking
+     */
+     function getProofSourceAddress() external view returns (address) {
+        return _proofSource;
+    }
+
+    /**
+     * @inheritdoc IIQNftStaking
+     */
+     function getStakingManagerAddress() external view returns (address) {
+        return _proofSource;
     }
 
     /**
