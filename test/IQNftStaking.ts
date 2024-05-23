@@ -156,7 +156,7 @@ async function signAndStakeNfts(
   tokenIds: BigNumberish[],
 ): Promise<string> {
   const stakerAddress = await staker.getAddress();
-  const nonce = await stakingManager.nonceCounter(stakerAddress);
+  const nonce = await stakingManager.nonceCounter(staker);
   const nftStakingAddress = await stakingContract.getAddress();
 
   const domain = {
@@ -188,7 +188,7 @@ async function signAndStakeNfts(
 
   const signature = await proofSource.signTypedData(domain, types, message);
 
-  await stakingManager.connect(staker).stake(stakingContract, tokenIds, signature);
+  await stakingManager.connect(staker).stake(stakingContract, tokenIdsArrayString, signature);
 
   return signature;
 }
@@ -381,6 +381,42 @@ async function generateClaimTokensSignature(
   return signature;
 }
 
+async function generateDeployNftStakingSignature(
+  proofSource: Signer,
+  deployer: Signer,
+  stakingManager: StakingManager,
+  nftCtolletion: ERC721Mock,
+): Promise<string> {
+  const proofSourceAddress = await proofSource.getAddress();
+  const nftCtolletionAddress = await nftCtolletion.getAddress();
+  const nonce = await stakingManager.nonceCounter(deployer);
+
+  const domain = {
+    name: 'StakingManager',
+    version: '1',
+    chainId: (await ethers.provider.getNetwork()).chainId,
+    verifyingContract: await stakingManager.getAddress(),
+  };
+
+  const types = {
+    DeployNftStaking: [
+      { name: 'proofSource', type: 'address' },
+      { name: 'nftCollectionAddress', type: 'address' },
+      { name: 'nonce', type: 'uint256' },
+    ],
+  };
+
+  const message = {
+    proofSource: proofSourceAddress,
+    nftCollectionAddress: nftCtolletionAddress,
+    nonce: nonce.toString(),
+  };
+
+  const signature = await proofSource.signTypedData(domain, types, message);
+
+  return signature;
+}
+
 
 describe('IQ NFT Staking Contract', function () {
 
@@ -412,17 +448,39 @@ describe('IQ NFT Staking Contract', function () {
       batchTransactionFee : '0',
     })) as StakingManager;
 
-    //Deploy IQ NFT Staking
+    // Deploy IQ NFT Staking
+
     nftStaking = (await run('deploy:nft-staking', {
       proofSource: await proofSource.getAddress(),
       stakingManager: await stakingManager.getAddress(),
       nftCollectionAddress: (await nftCollection.getAddress()).toString(),
     })) as IQNftStaking;
+
+    // const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
+    // const txResponse = await stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature);
+    // const txReceipt = await txResponse.wait();
+    // const nftStakingAddress = txReceipt.logs[0].address;
+    // const nftStaking = new ethers.Contract(nftStakingAddress, IQNftStaking, deployer) as IQNftStaking;
+
+
   });
 
   describe('Deployment & Initialization', function () {
   // Ensure correct deployed and configurations initialization.
+    it('Staking can be deployed using stakingManager', async function () {
+      const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
+      // await stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature);
 
+      const txResponse = await stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature);
+
+      // get transaction receipt
+      const txReceipt = await txResponse.wait();
+      const nftStakingAddress = txReceipt.logs[0].address;
+      await expect(txResponse)
+      .to.emit(stakingManager, 'NftStakingDeployed').withArgs(nftStakingAddress, deployer, proofSource, nftCollection)
+
+      console.log(`IQ Nft Staking contract address: ${nftStakingAddress}`);
+    });
     it('Camaping should be deactivated after deployment', async function () {
       expect(await nftStaking.isStakingActive()).to.equal(false);
     });

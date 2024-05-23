@@ -76,9 +76,9 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
 
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
             DEPLOY_IQ_NFT_STAKING_TYPEHASH,
-            msg.sender,
-            nonce,
-            proofSource
+            proofSource,
+            nftCollectionAddress,
+            nonce
         )));
 
         require(_verifySignature(_proofSource, digest, signature));
@@ -92,16 +92,15 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      * @inheritdoc IStakingManager
      */
     function stake(address stakingContract, uint256[] calldata tokenIds, bytes calldata signature) payable external {
-
         // verify nonce
         // uint256 nonce = _useNonce(msg.sender);
 
         // // generate typed data signature for verification
         // bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
         //     STAKE_TYPEHASH,
-        //     msg.sender,
-        //     nonce,
-        //     keccak256(abi.encodePacked(tokenIds))
+        //     stakingContract,
+        //     keccak256(abi.encodePacked(tokenIds)),
+        //     nonce
         // )));
 
         // // verify that signature from backend is correct
@@ -109,9 +108,8 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
 
         uint256 requiredFee = (tokenIds.length - 1) * _batchTransactionFee;
         if (msg.value < requiredFee) revert InsufficientEtherSent();
-        address staker = msg.sender;
 
-        IIQNftStaking(stakingContract).stake(tokenIds, staker);
+        IIQNftStaking(stakingContract).stake(tokenIds, msg.sender);
     }
 
     /**
