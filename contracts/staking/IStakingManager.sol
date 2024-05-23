@@ -79,6 +79,12 @@ interface IStakingManager {
     function getProofSourceAddress() external view returns (address);
 
     /**
+     * @dev Get contract Balance.
+     * @return Actual contract balance.
+     */
+    function getBalance() external view returns (uint256);
+
+    /**
      * @dev Get the current nonce for a user.
      * @param user User address.
      * @return Current nonce.

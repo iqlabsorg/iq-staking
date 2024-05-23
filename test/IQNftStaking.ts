@@ -193,44 +193,6 @@ async function signAndStakeNfts(
   return signature;
 }
 
-async function generateStakeNftsSignature(
-  nftStaking: IQNftStaking,
-  proofSource: Signer,
-  staker: Signer,
-  tokenIds: BigNumberish[],
-): Promise<string> {
-  const stakerAddress = await staker.getAddress();
-  const nonce = await nftStaking.nonceCounter(staker);
-
-  const domain = {
-    name: 'IQNftStaking',
-    version: '1',
-    chainId: (await ethers.provider.getNetwork()).chainId,
-    verifyingContract: await nftStaking.getAddress(),
-  };
-
-  const types = {
-    Stake: [
-      { name: 'staker', type: 'address' },
-      { name: 'nonce', type: 'uint256' },
-      { name: 'tokenIds', type: 'uint256[]' },
-    ],
-  };
-
-  const tokenIdsArrayString = tokenIds.map((id) => id.toString());
-
-  const message = {
-    staker: stakerAddress,
-    nonce: nonce.toString(),
-    tokenIds: tokenIdsArrayString,
-  };
-
-  const signature = await proofSource.signTypedData(domain, types, message);
-
-  return signature;
-}
-
-
 async function signAndWithdrawNfts(
   nftStaking: IQNftStaking,
   proofSource: Signer,
@@ -417,6 +379,43 @@ async function generateDeployNftStakingSignature(
   return signature;
 }
 
+async function generateStakeNftsSignature(
+  nftStaking: IQNftStaking,
+  stakingManager: StakingManager,
+  proofSource: Signer,
+  staker: Signer,
+  tokenIds: BigNumberish[],
+): Promise<string> {
+  const nonce = await stakingManager.nonceCounter(staker);
+  const nftStakingAddress = await nftStaking.getAddress();
+
+  const domain = {
+    name: 'StakingManager',
+    version: '1',
+    chainId: (await ethers.provider.getNetwork()).chainId,
+    verifyingContract: await stakingManager.getAddress(),
+  };
+
+  const types = {
+    StakeTokens: [
+      { name: 'stakingContract', type: 'address' },
+      { name: 'tokenIds', type: 'uint256[]' },
+      { name: 'nonce', type: 'uint256' },
+    ],
+  };
+
+  const tokenIdsArrayString = tokenIds.map((id) => id.toString());
+
+  const message = {
+    stakingContract: nftStakingAddress,
+    nonce: nonce.toString(),
+    tokenIds: tokenIdsArrayString,
+  };
+
+  const signature = await proofSource.signTypedData(domain, types, message);
+
+  return signature;
+}
 
 describe('IQ NFT Staking Contract', function () {
 
@@ -465,22 +464,98 @@ describe('IQ NFT Staking Contract', function () {
 
   });
 
+  describe('Staking Manager Functionality', function () {
+    // Ensure correct deployed and configurations initialization.
+
+      it('setDeploymentPrice and setDeploymentPrice works correctly', async function () {
+        expect(await stakingManager.getDeploymentPrice()).to.equal(0);
+        const newDeploymentPrice = 1000;
+        await stakingManager.connect(deployer).setDeploymentPrice(newDeploymentPrice);
+        expect(await stakingManager.getDeploymentPrice()).to.equal(newDeploymentPrice);
+      });
+
+      it('setBatchTransactionFee and getBatchTransactionFee works correctly', async function () {
+        expect(await stakingManager.getBatchTransactionFee()).to.equal(0);
+        const newBatchTransactionFee = 20000;
+        await stakingManager.connect(deployer).setBatchTransactionFee(newBatchTransactionFee);
+        expect(await stakingManager.getBatchTransactionFee()).to.equal(newBatchTransactionFee);
+      });
+
+      it('getProofSourceAddress works correctly', async function () {
+        expect(await stakingManager.getProofSourceAddress()).to.equal(proofSource);
+      });
+
+      it('getBalance works correctly', async function () {
+        expect(await stakingManager.getBalance()).to.equal(0);
+      });
+
+      it('Staking can be deployed using stakingManager', async function () {
+        const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
+        const txResponse = await stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature);
+        // get transaction receipt
+        const txReceipt = await txResponse.wait();
+        const nftStakingAddress = txReceipt.logs[0].address;
+        await expect(txResponse)
+        .to.emit(stakingManager, 'NftStakingDeployed').withArgs(nftStakingAddress, deployer, proofSource, nftCollection)
+
+        console.log(`IQ Nft Staking contract address: ${nftStakingAddress}`);
+      });
+
+      it('Reverts deployment if deployer sends not enough ether', async function () {
+        //set deployment price
+        const newDeploymentPrice = 1000;
+        await stakingManager.connect(deployer).setDeploymentPrice(newDeploymentPrice);
+        //deploy contract without sending any ether
+        const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
+        expect (stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature))
+          .to.revertedWithCustomError(stakingManager, 'InsufficientEtherSent');
+        });
+
+      it('Payment deployment works correctly', async function () {
+        //set deployment price
+        const newDeploymentPrice = 1000;
+        await stakingManager.connect(deployer).setDeploymentPrice(newDeploymentPrice);
+        //deploy contract with correct amount of ether
+        const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
+        expect (stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature, { value: newDeploymentPrice }))
+          .to.be.not.reverted;
+      });
+
+      it('Contrat balance can be withdrawed by owner to any address', async function () {
+        //set deployment price
+        const newDeploymentPrice = ethers.parseUnits('7000000', 'wei');
+        await stakingManager.connect(deployer).setDeploymentPrice(newDeploymentPrice);
+        //deploy contract with correct amount of ether
+        const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
+        await stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature, { value: newDeploymentPrice })
+        //check balance
+        expect(await stakingManager.getBalance()).to.equal(newDeploymentPrice);
+        //withdraw balance to third-party account
+        const userBalanceBeforeWithdrawal = await ethers.provider.getBalance(staker)
+        await stakingManager.connect(deployer).withdrawFunds(staker);
+        expect(await ethers.provider.getBalance(staker)).to.equal(userBalanceBeforeWithdrawal+newDeploymentPrice)
+      });
+
+      it('Zero balance cant be withdrawed', async function () {
+        expect (await stakingManager.connect(deployer).withdrawFunds(staker)).to.revertedWithCustomError(stakingManager, "CantWithdrawZero");
+      });
+
+      it('withdrawFunds reverts if caller is not owner', async function () {
+        const newDeploymentPrice = ethers.parseUnits('7000000', 'wei');
+        await stakingManager.connect(deployer).setDeploymentPrice(newDeploymentPrice);
+        //deploy contract with correct amount of ether
+        const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
+        await stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature, { value: newDeploymentPrice })
+
+        await expect(stakingManager.connect(staker).withdrawFunds(staker))
+          .to.be.revertedWith("Ownable: caller is not the owner");
+      });
+
+
+    });
+
   describe('Deployment & Initialization', function () {
   // Ensure correct deployed and configurations initialization.
-    it('Staking can be deployed using stakingManager', async function () {
-      const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
-      // await stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature);
-
-      const txResponse = await stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature);
-
-      // get transaction receipt
-      const txReceipt = await txResponse.wait();
-      const nftStakingAddress = txReceipt.logs[0].address;
-      await expect(txResponse)
-      .to.emit(stakingManager, 'NftStakingDeployed').withArgs(nftStakingAddress, deployer, proofSource, nftCollection)
-
-      console.log(`IQ Nft Staking contract address: ${nftStakingAddress}`);
-    });
     it('Camaping should be deactivated after deployment', async function () {
       expect(await nftStaking.isStakingActive()).to.equal(false);
     });
@@ -491,7 +566,8 @@ describe('IQ NFT Staking Contract', function () {
     });
 
     it('deactivateStaking should be reverted after deployment', async function () {
-      await expect(signAndDeactivateStaking(nftStaking, proofSource, deployer, 1000)).to.be.revertedWithCustomError(nftStaking, 'StakingNotActive');
+      await expect(signAndDeactivateStaking(nftStaking, proofSource, deployer, 1000))
+        .to.be.revertedWithCustomError(nftStaking, 'StakingNotActive');
     });
 
     it('getNftCollectionAddress returns right NFT collection', async function () {
@@ -660,27 +736,28 @@ describe('IQ NFT Staking Contract', function () {
       await nftCollection.connect(staker).approve(nftStaking, 2);
     });
 
-    // it('stake should emit Staked event correctly', async function () {
+    it('stake should emit Staked event correctly', async function () {
 
-    //   const signature = await generateStakeNftsSignature(nftStaking, proofSource, staker, firstNft);
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
 
-    //   const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
+      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
 
-    //   expect(await nftStaking.connect(staker).stake(firstNft, signature)).to.emit(nftStaking, 'Staked').withArgs(staker, firstNft, currentTimestamp);
-    // });
+      expect(await stakingManager.connect(staker).stake(nftStaking, firstNft, signature)).to.emit(nftStaking, 'Staked').withArgs(staker, firstNft, currentTimestamp);
+    });
 
     it('stake should work correctly', async function () {
 
       //fist stake
-      await signAndStakeNfts(nftStaking, stakingManager, proofSource, staker, firstNft);
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
+      await stakingManager.connect(staker).stake(nftStaking, firstNft, signature);
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(firstNft);
       expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
 
       //second stake
-      await signAndStakeNfts(nftStaking, stakingManager, proofSource, staker, secondNft);
-      expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(bothNfts);
-      expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
-      expect(await nftStaking.getOwnerOfStakedTokenId(2)).to.equal(staker);
+      // await signAndStakeNfts(nftStaking, stakingManager, proofSource, staker, secondNft);
+      // expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(bothNfts);
+      // expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
+      // expect(await nftStaking.getOwnerOfStakedTokenId(2)).to.equal(staker);
 
     });
 

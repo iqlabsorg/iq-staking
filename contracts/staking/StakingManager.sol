@@ -24,8 +24,8 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      * @dev EIP-712 type hash for securely tokens staking.
      * This type hash includes the address of the staking contract, the array of tokens to stake, and a nonce for replay protection.
      */
-    bytes32 private constant STAKE_TYPEHASH = keccak256(
-        "Stake(address stakingContract,uint256[] calldata tokenIds,uint256 nonce)"
+    bytes32 private constant STAKE_TOKENS_TYPEHASH = keccak256(
+        "StakeTokens(address stakingContract,uint256[] calldata tokenIds,uint256 nonce)"
     );
 
     /**
@@ -93,18 +93,18 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      */
     function stake(address stakingContract, uint256[] calldata tokenIds, bytes calldata signature) payable external {
         // verify nonce
-        // uint256 nonce = _useNonce(msg.sender);
+        uint256 nonce = _useNonce(msg.sender);
 
-        // // generate typed data signature for verification
-        // bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
-        //     STAKE_TYPEHASH,
-        //     stakingContract,
-        //     keccak256(abi.encodePacked(tokenIds)),
-        //     nonce
-        // )));
+        // generate typed data signature for verification
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            STAKE_TOKENS_TYPEHASH,
+            stakingContract,
+            keccak256(abi.encodePacked(tokenIds)),
+            nonce
+        )));
 
-        // // verify that signature from backend is correct
-        // require(_verifySignature(_proofSource, digest, signature));
+        // verify that signature from backend is correct
+        require(_verifySignature(_proofSource, digest, signature));
 
         uint256 requiredFee = (tokenIds.length - 1) * _batchTransactionFee;
         if (msg.value < requiredFee) revert InsufficientEtherSent();
@@ -117,7 +117,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      */
     function withdrawFunds(address payable _to) public onlyOwner {
         uint amount = address(this).balance;
-        if(amount > 0) revert CantWithdrawZero();
+        if(amount < 0) revert CantWithdrawZero();
         (bool sent, ) = _to.call{value: amount}("");
         require(sent, "Failed to send Ether");
     }
@@ -155,6 +155,13 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      */
      function getProofSourceAddress() external view returns (address) {
         return _proofSource;
+    }
+
+    /**
+     * @inheritdoc IStakingManager
+     */
+    function getBalance() external view returns (uint) {
+        return address(this).balance;
     }
 
      /**
