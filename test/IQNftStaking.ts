@@ -149,14 +149,15 @@ async function generateDeactivateStakingSignature(
 }
 
 async function signAndStakeNfts(
-  nftStaking: IQNftStaking,
+  stakingContract: IQNftStaking,
   stakingManager: StakingManager,
   proofSource: Signer,
   staker: Signer,
   tokenIds: BigNumberish[],
 ): Promise<string> {
   const stakerAddress = await staker.getAddress();
-  const nonce = await stakingManager.nonceCounter(staker);
+  const nonce = await stakingManager.nonceCounter(stakerAddress);
+  const nftStakingAddress = await stakingContract.getAddress();
 
   const domain = {
     name: 'StakingManager',
@@ -167,25 +168,27 @@ async function signAndStakeNfts(
 
   const types = {
     Stake: [
-      { name: 'staker', type: 'address' },
-      { name: 'nonce', type: 'uint256' },
+      { name: 'stakingContract', type: 'address' },
       { name: 'tokenIds', type: 'uint256[]' },
+      { name: 'nonce', type: 'uint256' },
     ],
   };
 
   const tokenIdsArrayString = tokenIds.map((id) => id.toString());
 
+  console.log(stakerAddress);
+  console.log(nftStakingAddress)
   console.log('tokenIdsArrayString', tokenIdsArrayString);
 
   const message = {
-    staker: stakerAddress,
-    nonce: nonce.toString(),
+    stakingContract: nftStakingAddress,
     tokenIds: tokenIdsArrayString,
+    nonce: nonce.toString(),
   };
 
   const signature = await proofSource.signTypedData(domain, types, message);
 
-  await stakingManager.connect(staker).stake(nftStaking, tokenIds, signature);
+  await stakingManager.connect(staker).stake(stakingContract, tokenIds, signature);
 
   return signature;
 }

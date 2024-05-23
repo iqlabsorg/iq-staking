@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "./IQNftStaking.sol";
+import "./IIQNftStaking.sol";
 import "./IStakingManager.sol";
 
 
@@ -83,7 +83,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
 
         require(_verifySignature(_proofSource, digest, signature));
 
-        IQNftStaking stakingContract = new IQNftStaking(proofSource, address(this), nftCollectionAddress);
+        IIQNftStaking stakingContract = new IQNftStaking(proofSource, address(this), nftCollectionAddress);
         emit NftStakingDeployed(address(stakingContract), msg.sender, proofSource, nftCollectionAddress);
         return address(stakingContract);
     }
@@ -110,7 +110,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
         uint256 requiredFee = (tokenIds.length - 1) * _batchTransactionFee;
         if (msg.value < requiredFee) revert InsufficientEtherSent();
 
-        IQNftStaking(stakingContract).stake(tokenIds, signature);
+        IIQNftStaking(stakingContract).stake(tokenIds, signature);
     }
 
     /**
