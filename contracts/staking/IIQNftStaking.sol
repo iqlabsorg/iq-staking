@@ -142,9 +142,8 @@ interface IIQNftStaking {
     /**
      * @dev Stake NFTs by providing an array of token IDs.
      * @param tokenIds The array of token IDs to stake.
-     * @param signature The signature verifying the stake.
      */
-    function stake(uint256[] calldata tokenIds, bytes calldata signature) external;
+    function stake(uint256[] calldata tokenIds, address staker) external;
 
     /**
      * @dev Allows a staker to claim their reward tokens.

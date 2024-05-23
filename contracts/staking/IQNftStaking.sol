@@ -170,7 +170,8 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
      */
     function stake(
         uint256[] calldata tokenIds,
-        bytes calldata signature
+        address staker
+        // bytes calldata signature
     ) external nonReentrant {
         // check if staking is active
         if (msg.sender != _stakingManager) revert CallerIsNotStakingManager();
@@ -193,20 +194,20 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         // execute staking logic
         for (uint i = 0; i < tokenIds.length; ++i) {
             unchecked {
-                if (_nftCollection.ownerOf(tokenIds[i]) != msg.sender) revert NotTheOwnerOfNft();
+                if (_nftCollection.ownerOf(tokenIds[i]) != staker) revert NotTheOwnerOfNft();
 
-                _nftCollection.transferFrom(msg.sender, address(this), tokenIds[i]);
+                _nftCollection.transferFrom(staker, address(this), tokenIds[i]);
 
                 // Add the token to the staked array and map its index
-                _stakedTokens[msg.sender].push(tokenIds[i]);
-                _stakedTokenIndexes[tokenIds[i]] = _stakedTokens[msg.sender].length - 1;
-                _tokenOwners[tokenIds[i]] = msg.sender;
+                _stakedTokens[staker].push(tokenIds[i]);
+                _stakedTokenIndexes[tokenIds[i]] = _stakedTokens[staker].length - 1;
+                _tokenOwners[tokenIds[i]] = staker;
             }
         }
 
 
         // emit event
-        emit Staked(msg.sender, tokenIds, block.timestamp);
+        emit Staked(staker, tokenIds, block.timestamp);
     }
 
     /**

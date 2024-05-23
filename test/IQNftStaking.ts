@@ -627,9 +627,9 @@ describe('IQ NFT Staking Contract', function () {
     });
 
     it('stake should be reverted when double stake the same nft', async function () {
-      await signAndStakeNfts(nftStaking, proofSource, staker, firstNft);
+      await signAndStakeNfts(nftStaking, stakingManager, proofSource, staker, firstNft);
 
-      await expect(signAndStakeNfts(nftStaking, proofSource, staker, firstNft)).to.be
+      await expect(signAndStakeNfts(nftStaking, stakingManager, proofSource, staker, firstNft)).to.be
         .revertedWithCustomError(nftStaking, 'NotTheOwnerOfNft');
     });
 
