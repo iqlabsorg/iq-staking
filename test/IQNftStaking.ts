@@ -748,8 +748,8 @@ describe('IQ NFT Staking Contract', function () {
     it('stake should work correctly', async function () {
 
       //fist stake
-      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
-      await stakingManager.connect(staker).stake(nftStaking, firstNft, signature);
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, bothNfts);
+      await stakingManager.connect(staker).stake(nftStaking, bothNfts, signature);
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(firstNft);
       expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
 

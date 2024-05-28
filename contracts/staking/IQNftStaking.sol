@@ -120,6 +120,16 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     uint256 private _totalTokensLeft;
 
     /**
+     * @dev Indicates delay in seconds for claim transaction.
+     */
+    uint256 private _claimDelay = 3600;
+
+    /**
+     * @dev Indicates last claim timestamp for each user.
+     */
+    mapping(address => uint256) private _lastClaimedTimestamp;
+
+    /**
      * @dev Indicates the status of staking pool.
      */
     bool private _stakingActive;
@@ -219,6 +229,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         bytes calldata signature
     ) external {
         // basic checks
+        if (_lastClaimedTimestamp[staker] + _claimDelay > block.timestamp) revert ClaimDelayNotPassed();
         if (amount == 0) revert CantClaimZero();
         if (_totalTokensClaimed + amount > _poolSize) revert InsufficientPoolSize();
 
@@ -243,6 +254,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         _claimedTokens[staker] = _claimedTokens[staker] + amount;
         _totalTokensClaimed = _totalTokensClaimed + amount;
         _totalTokensLeft = _totalTokensLeft - amount;
+        _lastClaimedTimestamp[staker] = block.timestamp;
 
         // emit event
         emit TokensClaimed(staker, amount, block.timestamp);
@@ -383,6 +395,13 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         _totalRewardAccrued = totalRewardAccrued;
 
         emit StakingDeactivated(block.timestamp);
+    }
+
+    /**
+     * @inheritdoc IIQNftStaking
+     */
+    function getLastClaimedTimestamp(address claimer) external view returns (uint256) {
+        return _lastClaimedTimestamp[claimer];
     }
 
     /**
