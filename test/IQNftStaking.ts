@@ -466,7 +466,6 @@ describe('IQ NFT Staking Contract', function () {
 
   describe('Staking Manager Functionality', function () {
     // Ensure correct deployed and configurations initialization.
-
       it('setDeploymentPrice and setDeploymentPrice works correctly', async function () {
         expect(await stakingManager.getDeploymentPrice()).to.equal(0);
         const newDeploymentPrice = 1000;
@@ -556,6 +555,9 @@ describe('IQ NFT Staking Contract', function () {
 
   describe('Deployment & Initialization', function () {
   // Ensure correct deployed and configurations initialization.
+    it('getStakingManagerAddress should return right address', async function () {
+      expect(await nftStaking.getStakingManagerAddress()).to.equal(stakingManager);
+    });
     it('Camaping should be deactivated after deployment', async function () {
       expect(await nftStaking.isStakingActive()).to.equal(false);
     });
@@ -597,8 +599,9 @@ describe('IQ NFT Staking Contract', function () {
     });
 
     it('stake should not work before tokens deposited to the pool', async function () {
-      await expect(signAndStakeNfts(nftStaking, stakingManager, proofSource, staker, [1])).to.be
-        .revertedWithCustomError(nftStaking, 'StakingNotActive');
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, [1]);
+      await expect(stakingManager.connect(staker).stake(nftStaking, [1], signature)).to.be
+      .revertedWithCustomError(nftStaking, 'StakingNotActive');;
     });
 
     it('depositRewardTokens should deposit tokens correctly', async function () {
@@ -736,6 +739,11 @@ describe('IQ NFT Staking Contract', function () {
       await nftCollection.connect(staker).approve(nftStaking, 2);
     });
 
+    it('stake should work only if caller is stakingManager', async function () {
+      await expect(nftStaking.connect(staker).stake([1], staker)).to.be
+      .revertedWithCustomError(nftStaking, 'CallerIsNotStakingManager');;
+    });
+
     it('stake should emit Staked event correctly', async function () {
 
       const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
@@ -748,54 +756,61 @@ describe('IQ NFT Staking Contract', function () {
     it('stake should work correctly', async function () {
 
       //fist stake
-      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, bothNfts);
-      await stakingManager.connect(staker).stake(nftStaking, bothNfts, signature);
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
+      await stakingManager.connect(staker).stake(nftStaking, firstNft, signature);
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(firstNft);
       expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
 
       //second stake
-      // await signAndStakeNfts(nftStaking, stakingManager, proofSource, staker, secondNft);
-      // expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(bothNfts);
-      // expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
-      // expect(await nftStaking.getOwnerOfStakedTokenId(2)).to.equal(staker);
-
+      const secondSignature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, secondNft);
+      await stakingManager.connect(staker).stake(nftStaking, secondNft, secondSignature);
+      expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(bothNfts);
+      expect(await nftStaking.getOwnerOfStakedTokenId(2)).to.equal(staker);
     });
 
     it('stake should be reverted when double stake the same nft', async function () {
-      await signAndStakeNfts(nftStaking, stakingManager, proofSource, staker, firstNft);
+      const firstSignature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
+      await stakingManager.connect(staker).stake(nftStaking, firstNft, firstSignature);
 
-      await expect(signAndStakeNfts(nftStaking, stakingManager, proofSource, staker, firstNft)).to.be
+      const secondSignature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
+
+      await expect(stakingManager.connect(staker).stake(nftStaking, firstNft, secondSignature)).to.be
         .revertedWithCustomError(nftStaking, 'NotTheOwnerOfNft');
     });
 
     it('stake should be reverted if nft is not minted', async function () {
-      await expect(signAndStakeNfts(nftStaking, proofSource, staker, [3])).to.be
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, [3]);
+      await expect(stakingManager.connect(staker).stake(nftStaking, [3], signature)).to.be
         .rejectedWith('ERC721: invalid token ID');
     });
 
     it('stake should be reverted if user not the owner of nft', async function () {
 
       await nftCollection.connect(staker).transferFrom(staker, deployer, 1);
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
 
-      await expect(signAndStakeNfts(nftStaking, proofSource, staker, [1])).to.be
+      await expect(stakingManager.connect(staker).stake(nftStaking, firstNft, signature)).to.be
         .revertedWithCustomError(nftStaking, 'NotTheOwnerOfNft');
     });
 
     it('stake should not work if staking deactivated', async function () {
 
       await signAndDeactivateStaking(nftStaking, proofSource, deployer, accruedRewards)
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
 
-      await expect(signAndStakeNfts(nftStaking, proofSource, staker, firstNft)).to.be
+      await expect(stakingManager.connect(staker).stake(nftStaking, firstNft, signature)).to.be
         .revertedWithCustomError(nftStaking, 'StakingNotActive');
     });
 
     it('withdraw should work correctly', async function () {
 
-      await signAndStakeNfts(nftStaking, proofSource, staker, firstNft);
+      //stake nft
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
+      await stakingManager.connect(staker).stake(nftStaking, firstNft, signature);
 
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(firstNft);
       expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
-
+      //withdraw nft
       await signAndWithdrawNfts(nftStaking, proofSource, staker, firstNft)
 
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal([]);
@@ -804,11 +819,14 @@ describe('IQ NFT Staking Contract', function () {
 
     it('withdraw should emit WithdrawStakedTokens correctly', async function () {
 
-      await signAndStakeNfts(nftStaking, proofSource, staker, firstNft);
+      //stake nft
+      const stakeSignature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
+      await stakingManager.connect(staker).stake(nftStaking, firstNft, stakeSignature);
 
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(firstNft);
       expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
 
+      //withdraw nft
       const signature = await generateWithdrawNftsSignature(nftStaking, proofSource, staker, firstNft);
       const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
 
@@ -820,8 +838,17 @@ describe('IQ NFT Staking Contract', function () {
 
     it('batch withdraw should work corretly', async function () {
 
-      await signAndStakeNfts(nftStaking, proofSource, staker, firstNft);
-      await signAndStakeNfts(nftStaking, proofSource, staker, secondNft);
+      //fist stake
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
+      await stakingManager.connect(staker).stake(nftStaking, firstNft, signature);
+      expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(firstNft);
+      expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
+
+      //second stake
+      const secondSignature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, secondNft);
+      await stakingManager.connect(staker).stake(nftStaking, secondNft, secondSignature);
+      expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(bothNfts);
+      expect(await nftStaking.getOwnerOfStakedTokenId(2)).to.equal(staker);
 
       await signAndWithdrawNfts(nftStaking, proofSource, staker, bothNfts)
 
@@ -839,7 +866,8 @@ describe('IQ NFT Staking Contract', function () {
 
     it('withdraw should fail if user not the owner of NFT', async function () {
 
-      await signAndStakeNfts(nftStaking, proofSource, staker, firstNft);
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
+      await stakingManager.connect(staker).stake(nftStaking, firstNft, signature);
 
       await expect(signAndWithdrawNfts(nftStaking, proofSource, deployer, firstNft)).to.be
         .revertedWithCustomError(nftStaking, 'NotTheOwnerOfNft');
@@ -872,6 +900,11 @@ describe('Tokens Claiming Process', function () {
       // Given that staking mechanics and calculations are handled server-side, explicit staking within this context is considered extraneous for testing purposes.
     });
 
+    it('getClaimedDelay should be 1 hour', async function () {
+     expect (await nftStaking.getClaimedDelay()).to.be
+        .equal(3600);
+    });
+
     it('claimTokens should work correctly', async function () {
 
       let firstClaimedAmount = BigInt(1000);
@@ -895,6 +928,10 @@ describe('Tokens Claiming Process', function () {
 
       stakerErc20TokensBalance = await rewardToken.balanceOf(staker);
       expect(stakerErc20TokensBalance).to.equal(firstClaimedAmount);
+
+      //Increase time by 3600 seconds (1 hour)
+      await ethers.provider.send("evm_increaseTime", [3600]);
+      await ethers.provider.send("evm_mine");
 
       //Second claim
       await signAndClaimTokens(nftStaking, proofSource, staker, secondClaimedAmount);
@@ -951,9 +988,47 @@ describe('Tokens Claiming Process', function () {
       await signAndClaimTokens(nftStaking, proofSource, staker, POOL_SIZE);
       expect(await nftStaking.totalTokensLeft()).to.equal(0);
 
+      //Increase time by 3600 seconds (1 hour)
+      await ethers.provider.send("evm_increaseTime", [3600]);
+      await ethers.provider.send("evm_mine");
+
       //Second claim
       await expect(signAndClaimTokens(nftStaking, proofSource, staker, minimalClaimAmount)).to.be
         .revertedWithCustomError(nftStaking, 'InsufficientPoolSize');
+    });
+
+    it('claimTokens should be rejected if claim delay not passed', async function () {
+
+      let minimalClaimAmount = BigInt(1);
+
+      //First claim
+      await signAndClaimTokens(nftStaking, proofSource, staker, POOL_SIZE);
+      expect(await nftStaking.totalTokensLeft()).to.equal(0);
+
+      //Second claim
+      await expect(signAndClaimTokens(nftStaking, proofSource, staker, minimalClaimAmount)).to.be
+        .revertedWithCustomError(nftStaking, 'ClaimDelayNotPassed');
+    });
+
+    it('getLastClaimedTimestamp should work correctly', async function () {
+
+      let firstClaimedAmount = BigInt(3000);
+
+      // Backend verifies the number of NFTs staked, their staking duration, and calculates the claimable tokens.
+      // If the claim exceeds the calculated amount, the signature will not be provided and the transaction will fail.
+      expect(await nftStaking.hasClaimed(staker)).to.equal(false);
+
+      let stakerErc20TokensBalance = await rewardToken.balanceOf(staker);
+      expect(stakerErc20TokensBalance).to.equal(0);
+
+      const signature = await generateClaimTokensSignature(nftStaking, proofSource, staker, firstClaimedAmount);
+      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
+
+      expect(await nftStaking.claimTokens(staker, firstClaimedAmount, signature)).to.emit(nftStaking, 'TokensClaimed').withArgs(staker, firstClaimedAmount, currentTimestamp+1);
+
+      //check last claimed timestamp for claimer and for third-party address
+      expect(await nftStaking.getLastClaimedTimestamp(staker)).to.be.equal(currentTimestamp+1);
+      expect(await nftStaking.getLastClaimedTimestamp(deployer)).to.be.equal(0);
     });
 
 });

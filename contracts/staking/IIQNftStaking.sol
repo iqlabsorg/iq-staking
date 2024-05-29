@@ -147,6 +147,7 @@ interface IIQNftStaking {
     /**
      * @dev Stake NFTs by providing an array of token IDs.
      * @param tokenIds The array of token IDs to stake.
+     * @param staker The address of staker.
      */
     function stake(uint256[] calldata tokenIds, address staker) external;
 
@@ -286,6 +287,12 @@ interface IIQNftStaking {
      * @return True if staking is active, false otherwise.
      */
     function isStakingActive() external view returns (bool);
+
+    /**
+     * @dev Checks the delay between claims.
+     * @return True claimed delay in seconds.
+     */
+    function getClaimedDelay() external view returns (uint256);
 
     /**
      * @dev Returns the nonce counter for a given address, which can be used to prevent replay attacks.

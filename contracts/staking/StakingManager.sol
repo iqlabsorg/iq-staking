@@ -25,7 +25,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      * This type hash includes the address of the staking contract, the array of tokens to stake, and a nonce for replay protection.
      */
     bytes32 private constant STAKE_TOKENS_TYPEHASH = keccak256(
-        "StakeTokens(address stakingContract,uint256[] calldata tokenIds,uint256 nonce)"
+        "StakeTokens(address stakingContract,uint256[] tokenIds,uint256 nonce)"
     );
 
     /**
