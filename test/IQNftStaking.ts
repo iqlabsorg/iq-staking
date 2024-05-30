@@ -429,6 +429,7 @@ describe('IQ NFT Staking Contract', function () {
   let nftStaking: IQNftStaking;
   let nftCollection: ERC721Mock;
   let stakingManager: StakingManager;
+  let newStakingManager: StakingManager;
   let staker: Signer;
 
 
@@ -442,6 +443,12 @@ describe('IQ NFT Staking Contract', function () {
     })) as ERC721Mock;
 
     stakingManager = (await hre.run('deploy:staking-manager', {
+      proofSource: await proofSource.getAddress(),
+      deploymentPrice: '0',
+      batchTransactionFee : '0',
+    })) as StakingManager;
+
+    newStakingManager = (await hre.run('deploy:staking-manager', {
       proofSource: await proofSource.getAddress(),
       deploymentPrice: '0',
       batchTransactionFee : '0',
@@ -550,6 +557,28 @@ describe('IQ NFT Staking Contract', function () {
           .to.be.revertedWith("Ownable: caller is not the owner");
       });
 
+      it('setStakingManager reverts if caller is not owner', async function () {
+        await expect(stakingManager.connect(staker).setStakingManager(nftStaking, newStakingManager))
+          .to.be.revertedWith("Ownable: caller is not the owner");
+      });
+
+      it('setStakingManager reverts if caller is not stakingManager contract', async function () {
+        await expect(nftStaking.setStakingManager(newStakingManager))
+          .to.revertedWithCustomError(nftStaking, 'CallerIsNotStakingManager');
+      });
+
+      it('setStakingManager works correctly', async function () {
+        //set new staking manager
+        await expect(stakingManager.connect(deployer).setStakingManager(nftStaking, newStakingManager))
+          .to.emit(nftStaking, "NewStakingManagerSet").withArgs(newStakingManager);
+        //check is staking manager changed
+        expect(await nftStaking.getStakingManagerAddress()).to.equal(newStakingManager);
+        //set old staking manager
+        await expect(newStakingManager.connect(deployer).setStakingManager(nftStaking, stakingManager))
+        .to.emit(nftStaking, "NewStakingManagerSet").withArgs(stakingManager);
+        //check is staking manager changed back
+        expect(await nftStaking.getStakingManagerAddress()).to.equal(stakingManager);
+      });
 
     });
 
