@@ -292,6 +292,7 @@ async function signAndClaimTokens(
       { name: 'staker', type: 'address' },
       { name: 'nonce', type: 'uint256' },
       { name: 'amount', type: 'uint256' },
+      { name: 'timestamp', type: 'uint256' },
     ],
   };
 
@@ -299,6 +300,7 @@ async function signAndClaimTokens(
     staker: stakerAddress,
     nonce: nonce.toString(),
     amount: amount.toString(),
+    timestamp: await ethers.provider.getBlock('latest').then(b => b.timestamp)+1,
   };
 
   const signature = await proofSource.signTypedData(domain, types, message);
@@ -329,6 +331,7 @@ async function generateClaimTokensSignature(
       { name: 'staker', type: 'address' },
       { name: 'nonce', type: 'uint256' },
       { name: 'amount', type: 'uint256' },
+      { name: 'timestamp', type: 'uint256' },
     ],
   };
 
@@ -336,6 +339,7 @@ async function generateClaimTokensSignature(
     staker: stakerAddress,
     nonce: nonce.toString(),
     amount: amount.toString(),
+    timestamp: await ethers.provider.getBlock('latest').then(b => b.timestamp)+1,
   };
 
   const signature = await proofSource.signTypedData(domain, types, message);
