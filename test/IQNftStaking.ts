@@ -436,12 +436,13 @@ describe('IQ NFT Staking Contract', function () {
   beforeEach(async function () {
     [deployer, staker, poolCreator, proofSource] = await ethers.getSigners();
 
-    //Deploy ERC721Mock
+    // Deploy ERC721Mock
     nftCollection = (await hre.run('deploy:nft-mock', {
       name: 'Test NFT Collection',
       symbol: 'TNC',
     })) as ERC721Mock;
 
+    // Deploy StakingManager
     stakingManager = (await hre.run('deploy:staking-manager', {
       proofSource: await proofSource.getAddress(),
       deploymentPrice: '0',
@@ -455,20 +456,11 @@ describe('IQ NFT Staking Contract', function () {
     })) as StakingManager;
 
     // Deploy IQ NFT Staking
-
     nftStaking = (await run('deploy:nft-staking', {
       proofSource: await proofSource.getAddress(),
       stakingManager: await stakingManager.getAddress(),
       nftCollectionAddress: (await nftCollection.getAddress()).toString(),
     })) as IQNftStaking;
-
-    // const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
-    // const txResponse = await stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature);
-    // const txReceipt = await txResponse.wait();
-    // const nftStakingAddress = txReceipt.logs[0].address;
-    // const nftStaking = new ethers.Contract(nftStakingAddress, IQNftStaking, deployer) as IQNftStaking;
-
-
   });
 
   describe('Staking Manager Functionality', function () {
@@ -498,7 +490,7 @@ describe('IQ NFT Staking Contract', function () {
       it('Staking can be deployed using stakingManager', async function () {
         const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
         const txResponse = await stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature);
-        // get transaction receipt
+        // Get transaction receipt
         const txReceipt = await txResponse.wait();
         const nftStakingAddress = txReceipt.logs[0].address;
         await expect(txResponse)
@@ -508,35 +500,35 @@ describe('IQ NFT Staking Contract', function () {
       });
 
       it('Reverts deployment if deployer sends not enough ether', async function () {
-        //set deployment price
+        // Set deployment price
         const newDeploymentPrice = 1000;
         await stakingManager.connect(deployer).setDeploymentPrice(newDeploymentPrice);
-        //deploy contract without sending any ether
+        // Deploy contract without sending any ether
         const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
         expect (stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature))
           .to.revertedWithCustomError(stakingManager, 'InsufficientEtherSent');
         });
 
       it('Payment deployment works correctly', async function () {
-        //set deployment price
+        // Set deployment price
         const newDeploymentPrice = 1000;
         await stakingManager.connect(deployer).setDeploymentPrice(newDeploymentPrice);
-        //deploy contract with correct amount of ether
+        // Deploy contract with correct amount of ether
         const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
         expect (stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature, { value: newDeploymentPrice }))
           .to.be.not.reverted;
       });
 
       it('Contrat balance can be withdrawed by owner to any address', async function () {
-        //set deployment price
+        // Set deployment price
         const newDeploymentPrice = ethers.parseUnits('7000000', 'wei');
         await stakingManager.connect(deployer).setDeploymentPrice(newDeploymentPrice);
-        //deploy contract with correct amount of ether
+        // Deploy contract with correct amount of ether
         const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
         await stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature, { value: newDeploymentPrice })
-        //check balance
+        // Check balance
         expect(await stakingManager.getBalance()).to.equal(newDeploymentPrice);
-        //withdraw balance to third-party account
+        // Withdraw balance to third-party account
         const userBalanceBeforeWithdrawal = await ethers.provider.getBalance(staker)
         await stakingManager.connect(deployer).withdrawFunds(staker);
         expect(await ethers.provider.getBalance(staker)).to.equal(userBalanceBeforeWithdrawal+newDeploymentPrice)
@@ -549,7 +541,7 @@ describe('IQ NFT Staking Contract', function () {
       it('withdrawFunds reverts if caller is not owner', async function () {
         const newDeploymentPrice = ethers.parseUnits('7000000', 'wei');
         await stakingManager.connect(deployer).setDeploymentPrice(newDeploymentPrice);
-        //deploy contract with correct amount of ether
+        // Deploy contract with correct amount of ether
         const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
         await stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature, { value: newDeploymentPrice })
 
@@ -568,15 +560,15 @@ describe('IQ NFT Staking Contract', function () {
       });
 
       it('setStakingManager works correctly', async function () {
-        //set new staking manager
+        // Set new staking manager
         await expect(stakingManager.connect(deployer).setStakingManager(nftStaking, newStakingManager))
           .to.emit(nftStaking, "NewStakingManagerSet").withArgs(newStakingManager);
-        //check is staking manager changed
+        // Check is staking manager changed
         expect(await nftStaking.getStakingManagerAddress()).to.equal(newStakingManager);
-        //set old staking manager
+        // Set old staking manager
         await expect(newStakingManager.connect(deployer).setStakingManager(nftStaking, stakingManager))
         .to.emit(nftStaking, "NewStakingManagerSet").withArgs(stakingManager);
-        //check is staking manager changed back
+        // Check is staking manager changed back
         expect(await nftStaking.getStakingManagerAddress()).to.equal(stakingManager);
       });
 
@@ -618,12 +610,12 @@ describe('IQ NFT Staking Contract', function () {
 
     beforeEach(async function () {
 
-      //Deploy ERC20Mock and mint pool size to deployer address
+      // Deploy ERC20Mock and mint pool size to deployer address
       rewardToken = (await hre.run('deploy:token-mock', {
         initialSupply: POOL_SIZE.toString(),
       })) as ERC20Mock;
 
-      //Aprprove tokens for transfering in to reward pool
+      // Aprprove tokens for transfering in to reward pool
       await rewardToken.connect(deployer).approve(nftStaking, POOL_SIZE);
     });
 
@@ -742,7 +734,7 @@ describe('IQ NFT Staking Contract', function () {
   });
 
   describe('NFT Staking & Unstaking Process', function () {
-  // Ensure correct NFT staking funcftionality.
+  //Ensure correct NFT staking funcftionality.
 
     let rewardToken: ERC20Mock;
     let accruedRewards = 1000;
@@ -752,12 +744,12 @@ describe('IQ NFT Staking Contract', function () {
 
     beforeEach(async function () {
 
-      //Deploy ERC20Mock and mint pool size to deployer address
+      // Deploy ERC20Mock and mint pool size to deployer address
       rewardToken = (await hre.run('deploy:token-mock', {
         initialSupply: POOL_SIZE.toString(),
       })) as ERC20Mock;
 
-      //Aprprove tokens for transfering in to reward pool
+      // Aprprove tokens for transfering in to reward pool
       await rewardToken.approve(nftStaking, POOL_SIZE);
 
       await nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
@@ -784,13 +776,13 @@ describe('IQ NFT Staking Contract', function () {
 
     it('stake should work correctly', async function () {
 
-      //fist stake
+      // Fist stake
       const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
       await stakingManager.connect(staker).stake(nftStaking, firstNft, signature);
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(firstNft);
       expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
 
-      //second stake
+      // Second stake
       const secondSignature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, secondNft);
       await stakingManager.connect(staker).stake(nftStaking, secondNft, secondSignature);
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(bothNfts);
@@ -833,13 +825,13 @@ describe('IQ NFT Staking Contract', function () {
 
     it('withdraw should work correctly', async function () {
 
-      //stake nft
+      // Stake nft
       const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
       await stakingManager.connect(staker).stake(nftStaking, firstNft, signature);
 
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(firstNft);
       expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
-      //withdraw nft
+      // Withdraw nft
       await signAndWithdrawNfts(nftStaking, proofSource, staker, firstNft)
 
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal([]);
@@ -848,14 +840,14 @@ describe('IQ NFT Staking Contract', function () {
 
     it('withdraw should emit WithdrawStakedTokens correctly', async function () {
 
-      //stake nft
+      // Stake nft
       const stakeSignature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
       await stakingManager.connect(staker).stake(nftStaking, firstNft, stakeSignature);
 
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(firstNft);
       expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
 
-      //withdraw nft
+      // Withdraw nft
       const signature = await generateWithdrawNftsSignature(nftStaking, proofSource, staker, firstNft);
       const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
 
@@ -867,13 +859,13 @@ describe('IQ NFT Staking Contract', function () {
 
     it('batch withdraw should work corretly', async function () {
 
-      //fist stake
+      // Fist stake
       const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, firstNft);
       await stakingManager.connect(staker).stake(nftStaking, firstNft, signature);
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(firstNft);
       expect(await nftStaking.getOwnerOfStakedTokenId(1)).to.equal(staker);
 
-      //second stake
+      // Second stake
       const secondSignature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, secondNft);
       await stakingManager.connect(staker).stake(nftStaking, secondNft, secondSignature);
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(bothNfts);
@@ -912,12 +904,12 @@ describe('Tokens Claiming Process', function () {
 
     beforeEach(async function () {
 
-      //Deploy ERC20Mock and mint pool size to deployer address
+      // Deploy ERC20Mock and mint pool size to deployer address
       rewardToken = (await hre.run('deploy:token-mock', {
         initialSupply: POOL_SIZE.toString(),
       })) as ERC20Mock;
 
-      //Aprprove tokens for transfering in to reward pool
+      // Aprprove tokens for transfering in to reward pool
       await rewardToken.approve(nftStaking, POOL_SIZE);
 
       await nftStaking.depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY);
@@ -947,7 +939,7 @@ describe('Tokens Claiming Process', function () {
       let stakerErc20TokensBalance = await rewardToken.balanceOf(staker);
       expect(stakerErc20TokensBalance).to.equal(0);
 
-      //First claim
+      // First claim
       await signAndClaimTokens(nftStaking, proofSource, staker, firstClaimedAmount);
 
       expect(await nftStaking.hasClaimed(staker)).to.equal(true);
@@ -958,11 +950,11 @@ describe('Tokens Claiming Process', function () {
       stakerErc20TokensBalance = await rewardToken.balanceOf(staker);
       expect(stakerErc20TokensBalance).to.equal(firstClaimedAmount);
 
-      //Increase time by 3600 seconds (1 hour)
+      // Increase time by 3600 seconds (1 hour)
       await ethers.provider.send("evm_increaseTime", [3600]);
       await ethers.provider.send("evm_mine");
 
-      //Second claim
+      // Second claim
       await signAndClaimTokens(nftStaking, proofSource, staker, secondClaimedAmount);
 
       expect(await nftStaking.hasClaimed(staker)).to.equal(true);
@@ -973,7 +965,7 @@ describe('Tokens Claiming Process', function () {
       stakerErc20TokensBalance = await rewardToken.balanceOf(staker);
       expect(stakerErc20TokensBalance).to.equal(fullClaimedAmount);
 
-      //maxPoolSize should not change after claims
+      // maxPoolSize should not change after claims
       expect(await nftStaking.showMaxPoolSize()).to.equal(POOL_SIZE);
     });
 
@@ -1013,15 +1005,15 @@ describe('Tokens Claiming Process', function () {
 
       let minimalClaimAmount = BigInt(1);
 
-      //First claim
+      // First claim
       await signAndClaimTokens(nftStaking, proofSource, staker, POOL_SIZE);
       expect(await nftStaking.totalTokensLeft()).to.equal(0);
 
-      //Increase time by 3600 seconds (1 hour)
+      // Increase time by 3600 seconds (1 hour)
       await ethers.provider.send("evm_increaseTime", [3600]);
       await ethers.provider.send("evm_mine");
 
-      //Second claim
+      // Second claim
       await expect(signAndClaimTokens(nftStaking, proofSource, staker, minimalClaimAmount)).to.be
         .revertedWithCustomError(nftStaking, 'InsufficientPoolSize');
     });
@@ -1030,11 +1022,11 @@ describe('Tokens Claiming Process', function () {
 
       let minimalClaimAmount = BigInt(1);
 
-      //First claim
+      // First claim
       await signAndClaimTokens(nftStaking, proofSource, staker, POOL_SIZE);
       expect(await nftStaking.totalTokensLeft()).to.equal(0);
 
-      //Second claim
+      // Second claim
       await expect(signAndClaimTokens(nftStaking, proofSource, staker, minimalClaimAmount)).to.be
         .revertedWithCustomError(nftStaking, 'ClaimDelayNotPassed');
     });
@@ -1055,7 +1047,7 @@ describe('Tokens Claiming Process', function () {
 
       expect(await nftStaking.claimTokens(staker, firstClaimedAmount, signature)).to.emit(nftStaking, 'TokensClaimed').withArgs(staker, firstClaimedAmount, currentTimestamp+1);
 
-      //check last claimed timestamp for claimer and for third-party address
+      // Check last claimed timestamp for claimer and for third-party address
       expect(await nftStaking.getLastClaimedTimestamp(staker)).to.be.equal(currentTimestamp+1);
       expect(await nftStaking.getLastClaimedTimestamp(deployer)).to.be.equal(0);
     });
