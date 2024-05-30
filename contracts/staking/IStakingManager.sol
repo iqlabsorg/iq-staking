@@ -61,6 +61,13 @@ interface IStakingManager {
     function setBatchTransactionFee(uint256 batchTransactionFee) external;
 
     /**
+     * @dev Set new staking manager for staking contract.
+     * @param stakingContract Address of the staking contract.
+     * @param stakingManager New staking manager address.
+     */
+    function setStakingManager(address stakingContract, address stakingManager) external;
+
+    /**
      * @dev Get the current deployment price.
      * @return Deployment price.
      */

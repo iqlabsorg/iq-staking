@@ -174,7 +174,6 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         uint256[] calldata tokenIds,
         address staker
     ) external nonReentrant {
-        // check if staking is active
         if (msg.sender != _stakingManager) revert CallerIsNotStakingManager();
         if (!_stakingActive) revert StakingNotActive();
 
@@ -371,6 +370,17 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         _totalRewardAccrued = totalRewardAccrued;
 
         emit StakingDeactivated(block.timestamp);
+    }
+
+    /**
+     * @inheritdoc IIQNftStaking
+     */
+    function setStakingManager(address stakingManager) external {
+        if (msg.sender != _stakingManager) revert CallerIsNotStakingManager();
+
+        _stakingManager = stakingManager;
+
+        emit NewStakingManagerSet(stakingManager);
     }
 
     /**

@@ -138,11 +138,17 @@ interface IIQNftStaking {
      */
     event StakingDeactivated(uint256 timestamp);
 
-     /**
+    /**
      * @notice Emitted when reward tokens was withdrawed by staking pool owner.
      * @param amount The amount of tokens withdrawed.
      */
     event TokensWithdrawedByOwner(uint256 amount);
+
+    /**
+     * @notice Emitted when a new staking manager is set for the staking contract.
+     * @param stakingManager The address of the new staking manager.
+     */
+    event NewStakingManagerSet(address stakingManager);
 
     /**
      * @dev Stake NFTs by providing an array of token IDs.
@@ -192,6 +198,12 @@ interface IIQNftStaking {
      * @param signature The signature verifying the deactivation.
      */
     function deactivateStaking(uint256 totalRewardAccrued, bytes calldata signature) external;
+
+    /**
+     * @dev Set new staking manager for staking contract.
+     * @param stakingManager New staking manager address.
+     */
+    function setStakingManager(address stakingManager) external;
 
     /**
      * @dev Returns the owner address of the specified staked token ID.

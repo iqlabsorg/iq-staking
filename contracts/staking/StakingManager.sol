@@ -139,6 +139,13 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
     /**
      * @inheritdoc IStakingManager
      */
+    function setStakingManager(address stakingContract, address stakingManager) external onlyOwner {
+        IIQNftStaking(stakingContract).setStakingManager(stakingManager);
+    }
+
+    /**
+     * @inheritdoc IStakingManager
+     */
     function getDeploymentPrice() external view returns (uint256) {
         return _deploymentPrice;
     }
