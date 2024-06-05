@@ -859,8 +859,8 @@ describe('IQ NFT Staking Contract', function () {
     });
 
     it('stake should be reverted if nft is not minted', async function () {
-      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, [3]);
-      await expect(stakingManager.connect(staker).stake(nftStaking, [3], signature)).to.be
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, [4]);
+      await expect(stakingManager.connect(staker).stake(nftStaking, [4], signature)).to.be
         .rejectedWith('ERC721: invalid token ID');
     });
 
