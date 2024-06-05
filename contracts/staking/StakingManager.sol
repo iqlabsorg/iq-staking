@@ -52,7 +52,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
     /**
      * @dev Indicates whether the individual batch transaction fee is active for each specific contract.
      */
-    mapping(address => bool) private _isBatchTransactionFeeActive;
+    mapping(address => bool) private _isIndividualBatchTransactionFeeActive;
 
     /**
      * @dev Stores backend address that will provide the signatures.
@@ -116,7 +116,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
         // verify that signature from backend is correct
         require(_verifySignature(_proofSource, digest, signature));
 
-        uint256 batchTransactionFee = _isBatchTransactionFeeActive[stakingContract] ? _individualBatchTransactionFee[stakingContract] : _batchTransactionFee;
+        uint256 batchTransactionFee = _isIndividualBatchTransactionFeeActive[stakingContract] ? _individualBatchTransactionFee[stakingContract] : _batchTransactionFee;
         uint256 requiredFee = (tokenIds.length - 1) * batchTransactionFee;
         if (msg.value < requiredFee) revert InsufficientEtherSent();
 
@@ -152,14 +152,14 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      */
     function setIndividualContractBatchTransactionFee(address stakingContract, uint256 batchTransactionFee) external onlyOwner {
         _individualBatchTransactionFee[stakingContract] = batchTransactionFee;
-        _isBatchTransactionFeeActive[stakingContract] = true;
+        _isIndividualBatchTransactionFeeActive[stakingContract] = true;
     }
 
     /**
      * @inheritdoc IStakingManager
      */
     function deactivateIndividualContractBatchTransactionFee(address stakingContract) external onlyOwner {
-        _isBatchTransactionFeeActive[stakingContract] = false;
+        _isIndividualBatchTransactionFeeActive[stakingContract] = false;
     }
 
     /**
@@ -186,8 +186,8 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
     /**
      * @inheritdoc IStakingManager
      */
-    function isBatchTransactionFeeActive(address stakingContract) external view returns (bool) {
-        return _isBatchTransactionFeeActive[stakingContract];
+    function isIndividualBatchTransactionFeeActive(address stakingContract) external view returns (bool) {
+        return _isIndividualBatchTransactionFeeActive[stakingContract];
     }
 
     /**

@@ -490,7 +490,7 @@ describe('IQ NFT Staking Contract', function () {
         await stakingManager.connect(deployer).setIndividualContractBatchTransactionFee(nftStaking, individualBatchTransactionFee);
 
         expect(await stakingManager.getIndividualBatchTransactionFee(nftStaking)).to.equal(individualBatchTransactionFee);
-        expect(await stakingManager.isBatchTransactionFeeActive(nftStaking)).to.equal(true);
+        expect(await stakingManager.isIndividualBatchTransactionFeeActive(nftStaking)).to.equal(true);
       });
 
       it('deactivateIndividualContractBatchTransactionFee works correctly', async function () {
@@ -499,12 +499,12 @@ describe('IQ NFT Staking Contract', function () {
         await stakingManager.connect(deployer).setIndividualContractBatchTransactionFee(nftStaking, individualBatchTransactionFee);
 
         expect(await stakingManager.getIndividualBatchTransactionFee(nftStaking)).to.equal(individualBatchTransactionFee);
-        expect(await stakingManager.isBatchTransactionFeeActive(nftStaking)).to.equal(true);
+        expect(await stakingManager.isIndividualBatchTransactionFeeActive(nftStaking)).to.equal(true);
 
         await stakingManager.connect(deployer).deactivateIndividualContractBatchTransactionFee(nftStaking);
 
         expect(await stakingManager.getIndividualBatchTransactionFee(nftStaking)).to.equal(individualBatchTransactionFee);
-        expect(await stakingManager.isBatchTransactionFeeActive(nftStaking)).to.equal(false);
+        expect(await stakingManager.isIndividualBatchTransactionFeeActive(nftStaking)).to.equal(false);
       });
 
       it('getProofSourceAddress works correctly', async function () {

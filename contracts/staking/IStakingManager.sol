@@ -85,7 +85,7 @@ interface IStakingManager {
      * @param stakingContract The address of the staking contract.
      * @return True if the individual batch transaction fee is active, false otherwise.
      */
-    function isBatchTransactionFeeActive(address stakingContract) external view returns (bool);
+    function isIndividualBatchTransactionFeeActive(address stakingContract) external view returns (bool);
 
     /**
      * @dev Returns the individual batch transaction fee for the specified contract.
