@@ -483,6 +483,30 @@ describe('IQ NFT Staking Contract', function () {
         expect(await stakingManager.getBatchTransactionFee()).to.equal(newBatchTransactionFee);
       });
 
+      it('setIndividualContractBatchTransactionFee and getIndividualBatchTransactionFee works correctly', async function () {
+        expect(await stakingManager.getIndividualBatchTransactionFee(nftStaking)).to.equal(0);
+
+        const individualBatchTransactionFee = 30000;
+        await stakingManager.connect(deployer).setIndividualContractBatchTransactionFee(nftStaking, individualBatchTransactionFee);
+
+        expect(await stakingManager.getIndividualBatchTransactionFee(nftStaking)).to.equal(individualBatchTransactionFee);
+        expect(await stakingManager.isBatchTransactionFeeActive(nftStaking)).to.equal(true);
+      });
+
+      it('deactivateIndividualContractBatchTransactionFee works correctly', async function () {
+
+        const individualBatchTransactionFee = 30000;
+        await stakingManager.connect(deployer).setIndividualContractBatchTransactionFee(nftStaking, individualBatchTransactionFee);
+
+        expect(await stakingManager.getIndividualBatchTransactionFee(nftStaking)).to.equal(individualBatchTransactionFee);
+        expect(await stakingManager.isBatchTransactionFeeActive(nftStaking)).to.equal(true);
+
+        await stakingManager.connect(deployer).deactivateIndividualContractBatchTransactionFee(nftStaking);
+
+        expect(await stakingManager.getIndividualBatchTransactionFee(nftStaking)).to.equal(individualBatchTransactionFee);
+        expect(await stakingManager.isBatchTransactionFeeActive(nftStaking)).to.equal(false);
+      });
+
       it('getProofSourceAddress works correctly', async function () {
         expect(await stakingManager.getProofSourceAddress()).to.equal(proofSource);
       });
@@ -745,6 +769,7 @@ describe('IQ NFT Staking Contract', function () {
     let firstNft = [1];
     let secondNft = [2];
     let bothNfts = [1, 2];
+    let threeNfts = [1, 2, 3];
 
     beforeEach(async function () {
 
@@ -762,6 +787,8 @@ describe('IQ NFT Staking Contract', function () {
       await nftCollection.connect(staker).approve(nftStaking, 1);
       await nftCollection.connect(deployer).mint(staker, 2);
       await nftCollection.connect(staker).approve(nftStaking, 2);
+      await nftCollection.connect(deployer).mint(staker, 3);
+      await nftCollection.connect(staker).approve(nftStaking, 3);
     });
 
     it('stake should work only if caller is stakingManager', async function () {
@@ -791,6 +818,34 @@ describe('IQ NFT Staking Contract', function () {
       await stakingManager.connect(staker).stake(nftStaking, secondNft, secondSignature);
       expect(await nftStaking.getStakedNftsByAddress(staker)).to.deep.equal(bothNfts);
       expect(await nftStaking.getOwnerOfStakedTokenId(2)).to.equal(staker);
+    });
+
+    it('stake function correctly calculates fees based on individual batch transaction fee', async function () {
+      const tokenIds = [1, 2, 3];
+      const individualBatchTransactionFee = 30000;
+      await stakingManager.connect(deployer).setIndividualContractBatchTransactionFee(nftStaking, individualBatchTransactionFee);
+
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, tokenIds);
+
+      const requiredFee = (tokenIds.length - 1) * individualBatchTransactionFee;
+      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
+
+      await expect(stakingManager.connect(staker).stake(nftStaking, tokenIds, signature, { value: requiredFee }))
+        .to.emit(nftStaking, 'Staked').withArgs(staker, threeNfts, currentTimestamp+1);
+    });
+
+    it('stake function correctly calculates fees based on global batch transaction fee if individual fee is not set', async function () {
+      const tokenIds = [1, 2, 3];
+      const globalBatchTransactionFee = 20000;
+      await stakingManager.connect(deployer).setBatchTransactionFee(globalBatchTransactionFee);
+
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, tokenIds);
+
+      const requiredFee = (tokenIds.length - 1) * globalBatchTransactionFee;
+      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
+
+      await expect(stakingManager.connect(staker).stake(nftStaking, tokenIds, signature, { value: requiredFee }))
+        .to.emit(nftStaking, 'Staked').withArgs(staker, threeNfts, currentTimestamp+1);
     });
 
     it('stake should be reverted when double stake the same nft', async function () {

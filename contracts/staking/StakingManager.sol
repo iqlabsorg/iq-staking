@@ -150,7 +150,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
     /**
      * @inheritdoc IStakingManager
      */
-    function setContractBatchTransactionFee(address stakingContract, uint256 batchTransactionFee) external onlyOwner {
+    function setIndividualContractBatchTransactionFee(address stakingContract, uint256 batchTransactionFee) external onlyOwner {
         _individualBatchTransactionFee[stakingContract] = batchTransactionFee;
         _isBatchTransactionFeeActive[stakingContract] = true;
     }
@@ -158,7 +158,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
     /**
      * @inheritdoc IStakingManager
      */
-    function unsetContractBatchTransactionFee(address stakingContract) external onlyOwner {
+    function deactivateIndividualContractBatchTransactionFee(address stakingContract) external onlyOwner {
         _isBatchTransactionFeeActive[stakingContract] = false;
     }
 
