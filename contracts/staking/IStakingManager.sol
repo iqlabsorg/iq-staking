@@ -68,6 +68,34 @@ interface IStakingManager {
     function setStakingManager(address stakingContract, address stakingManager) external;
 
     /**
+     * @dev Sets and activates the individual batch transaction fee for the specified staking contract.
+     * @param stakingContract The address of the staking contract.
+     * @param batchTransactionFee The individual batch transaction fee to be set for the specified staking contract.
+     */
+    function setContractBatchTransactionFee(address stakingContract, uint256 batchTransactionFee) external;
+
+    /**
+     * @dev Deactivates the individual batch transaction fee for the specified staking contract.
+     * @param stakingContract The address of the staking contract.
+     */
+    function unsetContractBatchTransactionFee(address stakingContract) external;
+
+    /**
+     * @dev Returns whether the individual batch transaction fee is active for the specified contract.
+     * @param stakingContract The address of the staking contract.
+     * @return True if the individual batch transaction fee is active, false otherwise.
+     */
+    function isBatchTransactionFeeActive(address stakingContract) external view returns (bool);
+
+    /**
+     * @dev Returns the individual batch transaction fee for the specified contract.
+     * @param stakingContract The address of the staking contract.
+     * @return The individual batch transaction fee.
+     */
+    function getIndividualBatchTransactionFee(address stakingContract) external view returns (uint256);
+
+
+    /**
      * @dev Get the current deployment price.
      * @return Deployment price.
      */

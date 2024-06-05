@@ -45,6 +45,16 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
     uint256 private _batchTransactionFee;
 
     /**
+     * @dev Stores the individual batch transaction fee for each specific contract.
+     */
+    mapping(address => uint256) private _individualBatchTransactionFee;
+
+    /**
+     * @dev Indicates whether the individual batch transaction fee is active for each specific contract.
+     */
+    mapping(address => bool) private _isBatchTransactionFeeActive;
+
+    /**
      * @dev Stores backend address that will provide the signatures.
      */
     address private _proofSource;
@@ -106,7 +116,8 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
         // verify that signature from backend is correct
         require(_verifySignature(_proofSource, digest, signature));
 
-        uint256 requiredFee = (tokenIds.length - 1) * _batchTransactionFee;
+        uint256 batchTransactionFee = _isBatchTransactionFeeActive[stakingContract] ? _individualBatchTransactionFee[stakingContract] : _batchTransactionFee;
+        uint256 requiredFee = (tokenIds.length - 1) * batchTransactionFee;
         if (msg.value < requiredFee) revert InsufficientEtherSent();
 
         IIQNftStaking(stakingContract).stake(tokenIds, msg.sender);
@@ -139,6 +150,21 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
     /**
      * @inheritdoc IStakingManager
      */
+    function setContractBatchTransactionFee(address stakingContract, uint256 batchTransactionFee) external onlyOwner {
+        _individualBatchTransactionFee[stakingContract] = batchTransactionFee;
+        _isBatchTransactionFeeActive[stakingContract] = true;
+    }
+
+    /**
+     * @inheritdoc IStakingManager
+     */
+    function unsetContractBatchTransactionFee(address stakingContract) external onlyOwner {
+        _isBatchTransactionFeeActive[stakingContract] = false;
+    }
+
+    /**
+     * @inheritdoc IStakingManager
+     */
     function setStakingManager(address stakingContract, address stakingManager) external onlyOwner {
         IIQNftStaking(stakingContract).setStakingManager(stakingManager);
     }
@@ -155,6 +181,20 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      */
      function getBatchTransactionFee() external view returns (uint256) {
         return _batchTransactionFee;
+    }
+
+    /**
+     * @inheritdoc IStakingManager
+     */
+    function isBatchTransactionFeeActive(address stakingContract) external view returns (bool) {
+        return _isBatchTransactionFeeActive[stakingContract];
+    }
+
+    /**
+     * @inheritdoc IStakingManager
+     */
+    function getIndividualBatchTransactionFee(address stakingContract) external view returns (uint256) {
+        return _individualBatchTransactionFee[stakingContract];
     }
 
     /**
