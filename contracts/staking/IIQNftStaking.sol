@@ -4,24 +4,9 @@ pragma solidity ^0.8.20;
 interface IIQNftStaking {
 
     /**
-     * @dev Stores detailed information for each claim.
-     * @param tokenId The unique identifier of the token being claimed.
-     * @param amount The amount of the token being claimed.
-     */
-    struct ClaimDetails {
-        uint256 tokenId;
-        uint256 amount;
-    }
-
-    /**
      * @dev Thrown when the address for proof verification is invalid.
      */
     error InvalidProofSourceAddress();
-
-    /**
-     * @dev Thrown when ClaimDetails[] amount and real amount of claimed tokens are different.
-     */
-    error InvalidClaimAmount();
 
     /**
      * @dev Thrown when the claim delay has not yet passed since the last claim by the claimer.
@@ -118,9 +103,9 @@ interface IIQNftStaking {
      * @param staker The address of the staker claiming tokens.
      * @param amount The amount of tokens claimed.
      * @param timestamp The timestamp when the claim occurred.
-     * @param claimDetails ClaimDetails array with detailed information for each claim.
+     * @param claimDetails Detailed information for each claim.
      */
-    event TokensClaimed(address indexed staker, uint256 amount, uint256 timestamp, ClaimDetails[] claimDetails);
+    event TokensClaimed(address indexed staker, uint256 amount, uint256 timestamp, string claimDetails);
 
     /**
      * @notice Emitted when a staker stakes their NFTs.
@@ -180,7 +165,7 @@ interface IIQNftStaking {
      * @param claimDetails detailed information for each claim.
      * @param signature The signature verifying the claim.
      */
-    function claimTokens(address staker, uint256 amount, ClaimDetails[] calldata claimDetails, bytes calldata signature) external;
+    function claimTokens(address staker, uint256 amount, string memory claimDetails, bytes calldata signature) external;
 
     /**
      * @dev Withdraw staked NFTs by providing an array of token IDs.

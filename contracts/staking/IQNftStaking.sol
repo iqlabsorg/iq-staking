@@ -22,7 +22,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
      * This type hash includes the address of the staker, a nonce for replay protection, and the amount of tokens to claim.
      */
     bytes32 private constant CLAIM_TOKENS_TYPEHASH = keccak256(
-        "ClaimTokens(address staker,uint256 nonce,uint256 amount,uint256 timestamp,ClaimDetails[] details)ClaimDetails(uint256 tokenId,uint256 amount)"
+        "ClaimTokens(address staker,uint256 nonce,uint256 amount,uint256 timestamp,string claimDetails)"
     );
 
     /**
@@ -201,21 +201,13 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     function claimTokens(
         address staker,
         uint256 amount,
-        ClaimDetails[] calldata claimDetails,
+        string memory claimDetails,
         bytes calldata signature
     ) external {
         // basic checks
         if (_lastClaimedTimestamp[staker] + _claimDelay > block.timestamp) revert ClaimDelayNotPassed();
         if (amount == 0) revert CantClaimZero();
         if (_totalTokensClaimed + amount > _poolSize) revert InsufficientPoolSize();
-
-        uint256 totalClaimAmount = 0;
-
-        for (uint256 i=0; i<claimDetails.length; i++) {
-            totalClaimAmount += claimDetails[i].amount;
-        }
-
-        if (totalClaimAmount != amount) revert InvalidClaimAmount();
 
         // verify nonce
         uint256 nonce = _useNonce(staker);
@@ -227,7 +219,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
             nonce,
             amount,
             block.timestamp,
-            keccak256(abi.encode(claimDetails))
+            claimDetails
         )));
 
         // verify that signature from backend is correct
