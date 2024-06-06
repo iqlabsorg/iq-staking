@@ -148,51 +148,6 @@ async function generateDeactivateStakingSignature(
   return signature;
 }
 
-async function signAndStakeNfts(
-  stakingContract: IQNftStaking,
-  stakingManager: StakingManager,
-  proofSource: Signer,
-  staker: Signer,
-  tokenIds: BigNumberish[],
-): Promise<string> {
-  const stakerAddress = await staker.getAddress();
-  const nonce = await stakingManager.nonceCounter(staker);
-  const nftStakingAddress = await stakingContract.getAddress();
-
-  const domain = {
-    name: 'StakingManager',
-    version: '1',
-    chainId: (await ethers.provider.getNetwork()).chainId,
-    verifyingContract: await stakingManager.getAddress(),
-  };
-
-  const types = {
-    Stake: [
-      { name: 'stakingContract', type: 'address' },
-      { name: 'tokenIds', type: 'uint256[]' },
-      { name: 'nonce', type: 'uint256' },
-    ],
-  };
-
-  const tokenIdsArrayString = tokenIds.map((id) => id.toString());
-
-  console.log(stakerAddress);
-  console.log(nftStakingAddress)
-  console.log('tokenIdsArrayString', tokenIdsArrayString);
-
-  const message = {
-    stakingContract: nftStakingAddress,
-    tokenIds: tokenIdsArrayString,
-    nonce: nonce.toString(),
-  };
-
-  const signature = await proofSource.signTypedData(domain, types, message);
-
-  await stakingManager.connect(staker).stake(stakingContract, tokenIdsArrayString, signature);
-
-  return signature;
-}
-
 async function signAndWithdrawNfts(
   nftStaking: IQNftStaking,
   proofSource: Signer,
