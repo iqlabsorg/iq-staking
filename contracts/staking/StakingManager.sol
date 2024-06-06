@@ -80,6 +80,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      * @inheritdoc IStakingManager
      */
     function deployNftStaking(address proofSource, address nftCollectionAddress, bytes calldata signature) payable external returns (address) {
+        // check msg.value is enough to cover deployment fee
         if (msg.value < _deploymentPrice) revert InsufficientEtherSent();
 
         uint256 nonce = _useNonce(msg.sender);
@@ -102,6 +103,11 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      * @inheritdoc IStakingManager
      */
     function stake(address stakingContract, uint256[] calldata tokenIds, bytes calldata signature) payable external {
+        // check msg.value is enough to cover transaction fee
+        uint256 batchTransactionFee = _isIndividualBatchTransactionFeeActive[stakingContract] ? _individualBatchTransactionFee[stakingContract] : _batchTransactionFee;
+        uint256 requiredFee = (tokenIds.length - 1) * batchTransactionFee;
+        if (msg.value < requiredFee) revert InsufficientEtherSent();
+
         // verify nonce
         uint256 nonce = _useNonce(msg.sender);
 
@@ -115,10 +121,6 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
 
         // verify that signature from backend is correct
         require(_verifySignature(_proofSource, digest, signature));
-
-        uint256 batchTransactionFee = _isIndividualBatchTransactionFeeActive[stakingContract] ? _individualBatchTransactionFee[stakingContract] : _batchTransactionFee;
-        uint256 requiredFee = (tokenIds.length - 1) * batchTransactionFee;
-        if (msg.value < requiredFee) revert InsufficientEtherSent();
 
         IIQNftStaking(stakingContract).stake(tokenIds, msg.sender);
     }
@@ -242,6 +244,4 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
     ) internal pure returns (bool) {
         return ECDSA.recover(digest, signature) == signer;
     }
-
-
 }
