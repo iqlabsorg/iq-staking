@@ -219,7 +219,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
             nonce,
             amount,
             block.timestamp,
-            claimDetails
+            keccak256(abi.encodePacked(claimDetails))
         )));
 
         // verify that signature from backend is correct

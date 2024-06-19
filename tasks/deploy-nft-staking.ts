@@ -27,4 +27,4 @@ task('deploy:nft-staking', 'Deploy the IQNftStaking contract')
   return new IQNftStaking__factory(deployer).attach(address);
 });
 
-//--network mumbai deploy:nft-staking --proof-source 0x000 --staking-manager 0x000 --nft-collection-address 0x000 --reward-rate 000 --reward-frequency 000
+//--network amoy deploy:nft-staking --proof-source 0x000 --staking-manager 0x000 --nft-collection-address 0x000

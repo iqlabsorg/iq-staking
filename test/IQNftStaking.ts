@@ -231,6 +231,7 @@ async function signAndClaimTokens(
   proofSource: Signer,
   staker: Signer,
   amount: BigNumberish,
+  claimDetails: string,
 ): Promise<string> {
   const stakerAddress = await staker.getAddress();
   const nonce = await nftStaking.nonceCounter(staker);
@@ -248,6 +249,7 @@ async function signAndClaimTokens(
       { name: 'nonce', type: 'uint256' },
       { name: 'amount', type: 'uint256' },
       { name: 'timestamp', type: 'uint256' },
+      { name: 'claimDetails', type: 'string' },
     ],
   };
 
@@ -256,11 +258,12 @@ async function signAndClaimTokens(
     nonce: nonce.toString(),
     amount: amount.toString(),
     timestamp: await ethers.provider.getBlock('latest').then(b => b.timestamp)+1,
+    claimDetails: claimDetails,
   };
 
   const signature = await proofSource.signTypedData(domain, types, message);
 
-  await nftStaking.connect(staker).claimTokens(staker, amount, signature);
+  await nftStaking.connect(staker).claimTokens(staker, amount, claimDetails, signature);
 
   return signature;
 }
@@ -270,6 +273,7 @@ async function generateClaimTokensSignature(
   proofSource: Signer,
   staker: Signer,
   amount: BigNumberish,
+  claimDetails: string,
 ): Promise<string> {
   const stakerAddress = await staker.getAddress();
   const nonce = await nftStaking.nonceCounter(staker);
@@ -287,6 +291,7 @@ async function generateClaimTokensSignature(
       { name: 'nonce', type: 'uint256' },
       { name: 'amount', type: 'uint256' },
       { name: 'timestamp', type: 'uint256' },
+      { name: 'claimDetails', type: 'string' },
     ],
   };
 
@@ -295,6 +300,7 @@ async function generateClaimTokensSignature(
     nonce: nonce.toString(),
     amount: amount.toString(),
     timestamp: await ethers.provider.getBlock('latest').then(b => b.timestamp)+1,
+    claimDetails: claimDetails.toString(),
   };
 
   const signature = await proofSource.signTypedData(domain, types, message);
@@ -923,6 +929,8 @@ describe('Tokens Claiming Process', function () {
         initialSupply: POOL_SIZE.toString(),
       })) as ERC20Mock;
 
+      let claimDetailsString = "testString";
+
       // Aprprove tokens for transfering in to reward pool
       await rewardToken.approve(nftStaking, POOL_SIZE);
 
@@ -945,6 +953,7 @@ describe('Tokens Claiming Process', function () {
       let firstClaimedAmount = BigInt(1000);
       let secondClaimedAmount = BigInt(3000);
       let fullClaimedAmount = firstClaimedAmount + secondClaimedAmount;
+      let claimDetailsString = "testString";
 
       // Backend verifies the number of NFTs staked, their staking duration, and calculates the claimable tokens.
       // If the claim exceeds the calculated amount, the signature will not be provided and the transaction will fail.
@@ -954,7 +963,7 @@ describe('Tokens Claiming Process', function () {
       expect(stakerErc20TokensBalance).to.equal(0);
 
       // First claim
-      await signAndClaimTokens(nftStaking, proofSource, staker, firstClaimedAmount);
+      await signAndClaimTokens(nftStaking, proofSource, staker, firstClaimedAmount, claimDetailsString);
 
       expect(await nftStaking.hasClaimed(staker)).to.equal(true);
       expect(await nftStaking.totalTokensClaimed()).to.equal(firstClaimedAmount);
@@ -969,7 +978,7 @@ describe('Tokens Claiming Process', function () {
       await ethers.provider.send("evm_mine");
 
       // Second claim
-      await signAndClaimTokens(nftStaking, proofSource, staker, secondClaimedAmount);
+      await signAndClaimTokens(nftStaking, proofSource, staker, secondClaimedAmount, claimDetailsString);
 
       expect(await nftStaking.hasClaimed(staker)).to.equal(true);
       expect(await nftStaking.totalTokensClaimed()).to.equal(fullClaimedAmount);
@@ -986,6 +995,7 @@ describe('Tokens Claiming Process', function () {
     it('claimTokens should emit TokensClaimed correctly', async function () {
 
       let firstClaimedAmount = BigInt(3000);
+      let claimDetailsString = "testString";
 
       // Backend verifies the number of NFTs staked, their staking duration, and calculates the claimable tokens.
       // If the claim exceeds the calculated amount, the signature will not be provided and the transaction will fail.
@@ -994,33 +1004,37 @@ describe('Tokens Claiming Process', function () {
       let stakerErc20TokensBalance = await rewardToken.balanceOf(staker);
       expect(stakerErc20TokensBalance).to.equal(0);
 
-      const signature = await generateClaimTokensSignature(nftStaking, proofSource, staker, firstClaimedAmount);
+      const signature = await generateClaimTokensSignature(nftStaking, proofSource, staker, firstClaimedAmount, claimDetailsString);
       const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
 
-      expect(await nftStaking.claimTokens(staker, firstClaimedAmount, signature)).to.emit(nftStaking, 'TokensClaimed').withArgs(staker, firstClaimedAmount, currentTimestamp+1);
+      expect(await nftStaking.claimTokens(staker, firstClaimedAmount, claimDetailsString, signature)).to.emit(nftStaking, 'TokensClaimed').withArgs(staker, firstClaimedAmount, currentTimestamp+1, claimDetailsString);
     });
 
     it('claimTokens should be rejected if user claim zero tokens', async function () {
-      await expect(signAndClaimTokens(nftStaking, proofSource, staker, 0)).to.be
+      let claimDetailsString = "testString";
+
+      await expect(signAndClaimTokens(nftStaking, proofSource, staker, 0, claimDetailsString)).to.be
         .revertedWithCustomError(nftStaking, 'CantClaimZero');
     });
 
     it('claimTokens should be rejected if user claim more tokens than are available in the pool', async function () {
 
+      let claimDetailsString = "testString";
       let moreThanPoolSize = BigInt(1)+POOL_SIZE;
 
       // Backend verifies the number of NFTs staked, their staking duration, and calculates the claimable tokens.
       // If the claim exceeds the calculated amount, the signature will not be provided and the transaction will fail.
-      await expect(signAndClaimTokens(nftStaking, proofSource, staker, moreThanPoolSize)).to.be
+      await expect(signAndClaimTokens(nftStaking, proofSource, staker, moreThanPoolSize, claimDetailsString)).to.be
         .revertedWithCustomError(nftStaking, 'InsufficientPoolSize');
     });
 
     it('claimTokens should be rejected if pool is empty', async function () {
 
       let minimalClaimAmount = BigInt(1);
+      let claimDetailsString = "testString";
 
       // First claim
-      await signAndClaimTokens(nftStaking, proofSource, staker, POOL_SIZE);
+      await signAndClaimTokens(nftStaking, proofSource, staker, POOL_SIZE, claimDetailsString);
       expect(await nftStaking.totalTokensLeft()).to.equal(0);
 
       // Increase time by 3600 seconds (1 hour)
@@ -1028,26 +1042,28 @@ describe('Tokens Claiming Process', function () {
       await ethers.provider.send("evm_mine");
 
       // Second claim
-      await expect(signAndClaimTokens(nftStaking, proofSource, staker, minimalClaimAmount)).to.be
+      await expect(signAndClaimTokens(nftStaking, proofSource, staker, minimalClaimAmount, claimDetailsString)).to.be
         .revertedWithCustomError(nftStaking, 'InsufficientPoolSize');
     });
 
     it('claimTokens should be rejected if claim delay not passed', async function () {
 
       let minimalClaimAmount = BigInt(1);
+      let claimDetailsString = "testString";
 
       // First claim
-      await signAndClaimTokens(nftStaking, proofSource, staker, POOL_SIZE);
+      await signAndClaimTokens(nftStaking, proofSource, staker, POOL_SIZE, claimDetailsString);
       expect(await nftStaking.totalTokensLeft()).to.equal(0);
 
       // Second claim
-      await expect(signAndClaimTokens(nftStaking, proofSource, staker, minimalClaimAmount)).to.be
+      await expect(signAndClaimTokens(nftStaking, proofSource, staker, minimalClaimAmount, claimDetailsString)).to.be
         .revertedWithCustomError(nftStaking, 'ClaimDelayNotPassed');
     });
 
     it('getLastClaimedTimestamp should work correctly', async function () {
 
       let firstClaimedAmount = BigInt(3000);
+      let claimDetailsString = "testString";
 
       // Backend verifies the number of NFTs staked, their staking duration, and calculates the claimable tokens.
       // If the claim exceeds the calculated amount, the signature will not be provided and the transaction will fail.
@@ -1056,10 +1072,10 @@ describe('Tokens Claiming Process', function () {
       let stakerErc20TokensBalance = await rewardToken.balanceOf(staker);
       expect(stakerErc20TokensBalance).to.equal(0);
 
-      const signature = await generateClaimTokensSignature(nftStaking, proofSource, staker, firstClaimedAmount);
+      const signature = await generateClaimTokensSignature(nftStaking, proofSource, staker, firstClaimedAmount, claimDetailsString);
       const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
 
-      expect(await nftStaking.claimTokens(staker, firstClaimedAmount, signature)).to.emit(nftStaking, 'TokensClaimed').withArgs(staker, firstClaimedAmount, currentTimestamp+1);
+      expect(await nftStaking.claimTokens(staker, firstClaimedAmount, claimDetailsString, signature)).to.emit(nftStaking, 'TokensClaimed').withArgs(staker, firstClaimedAmount, currentTimestamp+1, claimDetailsString);
 
       // Check last claimed timestamp for claimer and for third-party address
       expect(await nftStaking.getLastClaimedTimestamp(staker)).to.be.equal(currentTimestamp+1);
