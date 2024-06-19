@@ -6,15 +6,14 @@
 
 **Clone the Repository**: `git clone https://github.com/iqlabsorg/iq-staking.git`  
 **Setup dependencies**: Navigate to the repository `cd iq-staking` and run: `yarn install` & `yarn compile`  
-**Execute Tests**: To run tests use: `yarn hardhat test` 
-**Full .env**: Clone .env.example, rename it to .env and fill with your parameters
+**Execute Tests**: To run tests use: `yarn hardhat test`   
+**Fill .env**: Clone `.env.example`, rename it to `.env` and fill with your parameters  
 **Deploying the StakingManager Contract**:  
 `yarn hardhat deploy:staking-manager --network *** --proof-source 0x000 --deployment-price 0 --batch-transaction-fee 0`  
-Where `***` is the network name, and `0x000` corresponds to the proof source, amount of fee for deployment and batch transaction.
+Where `***` is the network name, and `0x000` corresponds to the proof source, amount of fee for deployment and batch transaction.  
 **Deploying the Staking Contract**:  
 `yarn hardhat deploy:nft-staking --network *** --proof-source 0x000 --staking-manager 0x000 --nft-collection-address 0x000`  
 Where `***` is the network name, and `0x000` corresponds to the proof source, staking manager and ERC721 collection address.
-
 
 ## Staking Requirements
 
