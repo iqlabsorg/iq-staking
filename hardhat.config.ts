@@ -14,6 +14,7 @@ const env = dotenv.config();
 import './tasks/deploy-nft-staking';
 import './tasks/deploy-nft-mock';
 import './tasks/deploy-token-mock';
+import './tasks/deploy-staking-manager';
 
 
 
@@ -58,6 +59,11 @@ const config: HardhatUserConfig = {
       accounts,
       timeout: 40000,
     },
+    amoy: {
+      url: `https://polygon-amoy.g.alchemy.com/v2/${env.parsed?.ALCHEMY_URL}`,
+      accounts,
+      timeout: 40000,
+    },
     ancient8Testnet: {
       url: 'https://rpcv2-testnet.ancient8.gg',
       accounts,
@@ -73,6 +79,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://scanv2-testnet.ancient8.gg/api/",
           browserURL: "https://scanv2-testnet.ancient8.gg/"
+        }
+      },
+      {
+        network: "amoy",
+        chainId: 80002,
+        urls: {
+          apiURL: 'https://api-amoy.polygonscan.com/api',
+          browserURL: 'https://amoy.polygonscan.com',
         }
       }
     ]

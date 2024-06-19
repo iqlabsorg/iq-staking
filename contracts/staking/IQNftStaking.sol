@@ -17,20 +17,12 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     using Counters for Counters.Counter;
     using SafeERC20 for IERC20;
 
-    /**
-     * @dev EIP-712 type hash for staking tokens. Used in the stake function to securely stake tokens.
-     * This type hash includes the address of the staker, a nonce for replay protection, and the token IDs to stake.
-     */
-    bytes32 private constant STAKE_TOKENS_TYPEHASH = keccak256(
-        "Stake(address staker,uint256 nonce,uint256[] tokenIds)"
-    );
-
      /**
      * @dev EIP-712 type hash for claiming tokens. Used in the claimTokens function to securely claim staking rewards.
      * This type hash includes the address of the staker, a nonce for replay protection, and the amount of tokens to claim.
      */
     bytes32 private constant CLAIM_TOKENS_TYPEHASH = keccak256(
-        "ClaimTokens(address staker,uint256 nonce,uint256 amount)"
+        "ClaimTokens(address staker,uint256 nonce,uint256 amount,uint256 timestamp,string claimDetails)"
     );
 
     /**
@@ -79,6 +71,11 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     address private _proofSource;
 
     /**
+     * @dev Indicates IQ Staking Manager address.
+     */
+    address private _stakingManager;
+
+    /**
      * @dev Indicates maximum pool size.
      */
     uint256 private _poolSize;
@@ -113,6 +110,16 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
      * @dev Indicates total quantity of tokens left in the pool.
      */
     uint256 private _totalTokensLeft;
+
+    /**
+     * @dev Indicates delay in seconds for claim transaction.
+     */
+    uint256 private _claimDelay = 3600;
+
+    /**
+     * @dev Indicates last claim timestamp for each user.
+     */
+    mapping(address => uint256) private _lastClaimedTimestamp;
 
     /**
      * @dev Indicates the status of staking pool.
@@ -151,10 +158,12 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     */
     constructor(
         address proofSource,
+        address stakingManager,
         address nftCollectionAddress
     ) EIP712("IQNftStaking", "1") {
         if (proofSource == address(0)) revert InvalidProofSourceAddress();
         _proofSource = proofSource;
+        _stakingManager = stakingManager;
         _nftCollection = IERC721(nftCollectionAddress);
     }
 
@@ -163,42 +172,27 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
      */
     function stake(
         uint256[] calldata tokenIds,
-        bytes calldata signature
+        address staker
     ) external nonReentrant {
-        // check if staking is active
+        if (msg.sender != _stakingManager) revert CallerIsNotStakingManager();
         if (!_stakingActive) revert StakingNotActive();
-
-        // verify nonce
-        uint256 nonce = _useNonce(msg.sender);
-
-        // generate typed data signature for verification
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
-            STAKE_TOKENS_TYPEHASH,
-            msg.sender,
-            nonce,
-            keccak256(abi.encodePacked(tokenIds))
-        )));
-
-        // verify that signature from backend is correct
-        require(_verifySignature(_proofSource, digest, signature));
 
         // execute staking logic
         for (uint i = 0; i < tokenIds.length; ++i) {
             unchecked {
-                if (_nftCollection.ownerOf(tokenIds[i]) != msg.sender) revert NotTheOwnerOfNft();
+                if (_nftCollection.ownerOf(tokenIds[i]) != staker) revert NotTheOwnerOfNft();
 
-                _nftCollection.transferFrom(msg.sender, address(this), tokenIds[i]);
+                _nftCollection.transferFrom(staker, address(this), tokenIds[i]);
 
                 // Add the token to the staked array and map its index
-                _stakedTokens[msg.sender].push(tokenIds[i]);
-                _stakedTokenIndexes[tokenIds[i]] = _stakedTokens[msg.sender].length - 1;
-                _tokenOwners[tokenIds[i]] = msg.sender;
+                _stakedTokens[staker].push(tokenIds[i]);
+                _stakedTokenIndexes[tokenIds[i]] = _stakedTokens[staker].length - 1;
+                _tokenOwners[tokenIds[i]] = staker;
             }
         }
 
-
         // emit event
-        emit Staked(msg.sender, tokenIds, block.timestamp);
+        emit Staked(staker, tokenIds, block.timestamp);
     }
 
     /**
@@ -207,9 +201,11 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     function claimTokens(
         address staker,
         uint256 amount,
+        string memory claimDetails,
         bytes calldata signature
     ) external {
         // basic checks
+        if (_lastClaimedTimestamp[staker] + _claimDelay > block.timestamp) revert ClaimDelayNotPassed();
         if (amount == 0) revert CantClaimZero();
         if (_totalTokensClaimed + amount > _poolSize) revert InsufficientPoolSize();
 
@@ -221,7 +217,9 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
             CLAIM_TOKENS_TYPEHASH,
             staker,
             nonce,
-            amount
+            amount,
+            block.timestamp,
+            keccak256(abi.encodePacked(claimDetails))
         )));
 
         // verify that signature from backend is correct
@@ -234,9 +232,10 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         _claimedTokens[staker] = _claimedTokens[staker] + amount;
         _totalTokensClaimed = _totalTokensClaimed + amount;
         _totalTokensLeft = _totalTokensLeft - amount;
+        _lastClaimedTimestamp[staker] = block.timestamp;
 
         // emit event
-        emit TokensClaimed(staker, amount, block.timestamp);
+        emit TokensClaimed(staker, amount, block.timestamp, claimDetails);
     }
 
     /**
@@ -379,28 +378,46 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getOwnerOfStakedTokenId(uint256 tokenId) external view returns (address) {
+    function setStakingManager(address stakingManager) external {
+        if (msg.sender != _stakingManager) revert CallerIsNotStakingManager();
+
+        _stakingManager = stakingManager;
+
+        emit NewStakingManagerSet(stakingManager);
+    }
+
+    /**
+     * @inheritdoc IIQNftStaking
+     */
+    function getLastClaimedTimestamp(address claimer) public view returns (uint256) {
+        return _lastClaimedTimestamp[claimer];
+    }
+
+    /**
+     * @inheritdoc IIQNftStaking
+     */
+    function getOwnerOfStakedTokenId(uint256 tokenId) public view returns (address) {
         return _tokenOwners[tokenId];
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getStakedNftsByAddress(address staker) external view returns (uint256[] memory) {
+    function getStakedNftsByAddress(address staker) public view returns (uint256[] memory) {
         return _stakedTokens[staker];
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getClaimedTokensByAddress(address staker) external view returns (uint256) {
+    function getClaimedTokensByAddress(address staker) public view returns (uint256) {
         return _claimedTokens[staker];
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function hasClaimed(address staker) external view returns (bool) {
+    function hasClaimed(address staker) public view returns (bool) {
         return _claimedTokens[staker] != 0;
     }
 
@@ -414,7 +431,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     /**
      * @inheritdoc IIQNftStaking
      */
-    function totalTokensClaimed() external view returns (uint256) {
+    function totalTokensClaimed() public view returns (uint256) {
         return _totalTokensClaimed;
     }
 
@@ -456,8 +473,29 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     /**
      * @inheritdoc IIQNftStaking
      */
+     function getProofSourceAddress() public view returns (address) {
+        return _proofSource;
+    }
+
+    /**
+     * @inheritdoc IIQNftStaking
+     */
+     function getStakingManagerAddress() public view returns (address) {
+        return _stakingManager;
+    }
+
+    /**
+     * @inheritdoc IIQNftStaking
+     */
     function isStakingActive() public view returns (bool) {
         return _stakingActive;
+    }
+
+    /**
+     * @inheritdoc IIQNftStaking
+     */
+    function getClaimedDelay() public view returns (uint256) {
+        return _claimDelay;
     }
 
     /**

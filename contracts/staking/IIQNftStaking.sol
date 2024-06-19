@@ -9,6 +9,16 @@ interface IIQNftStaking {
     error InvalidProofSourceAddress();
 
     /**
+     * @dev Thrown when the claim delay has not yet passed since the last claim by the claimer.
+     */
+    error ClaimDelayNotPassed();
+
+    /**
+     * @dev Thrown when caller of stake function is not Staking Manager.
+     */
+    error CallerIsNotStakingManager();
+
+    /**
      * @dev Thrown when the pool size is insufficient for a new staking action.
      */
     error InsufficientPoolSize();
@@ -93,8 +103,9 @@ interface IIQNftStaking {
      * @param staker The address of the staker claiming tokens.
      * @param amount The amount of tokens claimed.
      * @param timestamp The timestamp when the claim occurred.
+     * @param claimDetails Detailed information for each claim.
      */
-    event TokensClaimed(address indexed staker, uint256 amount, uint256 timestamp);
+    event TokensClaimed(address indexed staker, uint256 amount, uint256 timestamp, string claimDetails);
 
     /**
      * @notice Emitted when a staker stakes their NFTs.
@@ -128,26 +139,33 @@ interface IIQNftStaking {
      */
     event StakingDeactivated(uint256 timestamp);
 
-     /**
+    /**
      * @notice Emitted when reward tokens was withdrawed by staking pool owner.
      * @param amount The amount of tokens withdrawed.
      */
     event TokensWithdrawedByOwner(uint256 amount);
 
     /**
+     * @notice Emitted when a new staking manager is set for the staking contract.
+     * @param stakingManager The address of the new staking manager.
+     */
+    event NewStakingManagerSet(address stakingManager);
+
+    /**
      * @dev Stake NFTs by providing an array of token IDs.
      * @param tokenIds The array of token IDs to stake.
-     * @param signature The signature verifying the stake.
+     * @param staker The address of staker.
      */
-    function stake(uint256[] calldata tokenIds, bytes calldata signature) external;
+    function stake(uint256[] calldata tokenIds, address staker) external;
 
     /**
      * @dev Allows a staker to claim their reward tokens.
      * @param staker The address of the staker claiming tokens.
      * @param amount The amount of tokens to be claimed.
+     * @param claimDetails detailed information for each claim.
      * @param signature The signature verifying the claim.
      */
-    function claimTokens(address staker, uint256 amount, bytes calldata signature) external;
+    function claimTokens(address staker, uint256 amount, string memory claimDetails, bytes calldata signature) external;
 
     /**
      * @dev Withdraw staked NFTs by providing an array of token IDs.
@@ -182,6 +200,12 @@ interface IIQNftStaking {
      * @param signature The signature verifying the deactivation.
      */
     function deactivateStaking(uint256 totalRewardAccrued, bytes calldata signature) external;
+
+    /**
+     * @dev Set new staking manager for staking contract.
+     * @param stakingManager New staking manager address.
+     */
+    function setStakingManager(address stakingManager) external;
 
     /**
      * @dev Returns the owner address of the specified staked token ID.
@@ -254,10 +278,35 @@ interface IIQNftStaking {
     function getNftCollectionAddress() external view returns (address);
 
     /**
+     * @dev Get the Staking Manager address.
+     * @return Staking Manager address.
+     */
+    function getStakingManagerAddress() external view returns (address);
+
+    /**
+     * @dev Get the proof source address.
+     * @return Proof source address.
+     */
+    function getProofSourceAddress() external view returns (address);
+
+    /**
+     * @dev Get timestamp of last reward claim for specific address address.
+     * @param claimer The address to check.
+     * @return Proof source address.
+     */
+    function getLastClaimedTimestamp(address claimer) external view returns (uint256);
+
+    /**
      * @dev Checks if staking is currently active.
      * @return True if staking is active, false otherwise.
      */
     function isStakingActive() external view returns (bool);
+
+    /**
+     * @dev Checks the delay between claims.
+     * @return True claimed delay in seconds.
+     */
+    function getClaimedDelay() external view returns (uint256);
 
     /**
      * @dev Returns the nonce counter for a given address, which can be used to prevent replay attacks.
