@@ -22,7 +22,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
      * This type hash includes the address of the staker, a nonce for replay protection, and the amount of tokens to claim.
      */
     bytes32 private constant CLAIM_TOKENS_TYPEHASH = keccak256(
-        "ClaimTokens(address staker,uint256 nonce,uint256 amount,uint256 timestamp,string claimDetails)"
+        "ClaimTokens(address staker,uint256 nonce,uint256 amount,string claimDetails)"
     );
 
     /**
@@ -218,7 +218,6 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
             staker,
             nonce,
             amount,
-            block.timestamp,
             keccak256(abi.encodePacked(claimDetails))
         )));
 
