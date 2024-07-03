@@ -1059,7 +1059,7 @@ describe('Tokens Claiming Process', function () {
       const signature = await generateClaimTokensSignature(nftStaking, proofSource, staker, firstClaimedAmount, claimDetailsString);
       const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
 
-      expect(await nftStaking.claimTokens(staker, firstClaimedAmount, claimDetailsString, signature)).to.emit(nftStaking, 'TokensClaimed').withArgs(staker, firstClaimedAmount, currentTimestamp+1, claimDetailsString);
+      expect(await nftStaking.connect(staker).claimTokens(staker, firstClaimedAmount, claimDetailsString, signature)).to.emit(nftStaking, 'TokensClaimed').withArgs(staker, firstClaimedAmount, currentTimestamp+1, claimDetailsString);
     });
 
     it('claimTokens should be rejected if user claim zero tokens', async function () {
@@ -1127,12 +1127,24 @@ describe('Tokens Claiming Process', function () {
       const signature = await generateClaimTokensSignature(nftStaking, proofSource, staker, firstClaimedAmount, claimDetailsString);
       const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
 
-      expect(await nftStaking.claimTokens(staker, firstClaimedAmount, claimDetailsString, signature)).to.emit(nftStaking, 'TokensClaimed').withArgs(staker, firstClaimedAmount, currentTimestamp+1, claimDetailsString);
+      expect(await nftStaking.connect(staker).claimTokens(staker, firstClaimedAmount, claimDetailsString, signature)).to.emit(nftStaking, 'TokensClaimed').withArgs(staker, firstClaimedAmount, currentTimestamp+1, claimDetailsString);
 
       // Check last claimed timestamp for claimer and for third-party address
       expect(await nftStaking.getLastClaimedTimestamp(staker)).to.be.equal(currentTimestamp+1);
       expect(await nftStaking.getLastClaimedTimestamp(deployer)).to.be.equal(0);
     });
 
+    it('should revert if claimTokens is called by non-staker', async function () {
+
+      let firstClaimedAmount = BigInt(3000);
+      let claimDetailsString = "testString";
+
+      const signature = await generateClaimTokensSignature(nftStaking, proofSource, staker, firstClaimedAmount, claimDetailsString);
+
+      // Here we ensure that only staker can call claimTokens.
+      // Even if a third party obtains a valid backend signature, the transaction will be reverted.
+      expect(nftStaking.connect(deployer).claimTokens(staker, firstClaimedAmount, claimDetailsString, signature)).to
+      .be.revertedWithCustomError(nftStaking, 'UnauthorizedClaimAttempt');
+    });
 });
 });
