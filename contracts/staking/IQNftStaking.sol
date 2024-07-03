@@ -247,21 +247,27 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         uint256[] calldata tokenIds,
         bytes calldata signature
     ) external nonReentrant {
+        uint256 length = tokenIds.length;
+        address staker = msg.sender;
+
         // check that staker is the owner of the NFTs
-        for (uint i = 0; i < tokenIds.length; ++i) {
+        for (uint i = 0; i < length; ++i) {
+            uint256 tokenId = tokenIds[i];
+
             // check that NFT is owned by this contract currently
-            if (_nftCollection.ownerOf(tokenIds[i]) != address(this)) revert NftNotStaked();
+            if (_nftCollection.ownerOf(tokenId) != address(this)) revert NftNotStaked();
+
             // check that staker is the owner of the NFT
-            if (_tokenOwners[tokenIds[i]] != msg.sender) revert NotTheOwnerOfNft();
+            if (_tokenOwners[tokenId] != staker) revert NotTheOwnerOfNft();
         }
 
         // verify nonce
-        uint256 nonce = _useNonce(msg.sender);
+        uint256 nonce = _useNonce(staker);
 
         // generate typed data signature for verification
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
             WITHDRAW_TOKENS_TYPEHASH,
-            msg.sender,
+            staker,
             nonce,
             keccak256(abi.encodePacked(tokenIds))
         )));
@@ -269,14 +275,14 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         // verify that signature from backend is correct
         require(_verifySignature(_proofSource, digest, signature));
 
-        for (uint i = 0; i < tokenIds.length; ++i) {
-            // transfer NFT back to staker
-            _nftCollection.transferFrom(address(this), msg.sender, tokenIds[i]);
-            // remove NFT from staking
-            _removeNftFromStaking(msg.sender, tokenIds[i]);
+            for (uint i = 0; i < length; ++i) {
+            uint256 tokenId = tokenIds[i];
+
+            _nftCollection.transferFrom(address(this), staker, tokenId);
+
+            _removeNftFromStaking(staker, tokenId);
         }
 
-        // emit event
         emit WithdrawStakedTokens(msg.sender, tokenIds, block.timestamp);
     }
 
