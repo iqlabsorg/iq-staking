@@ -128,7 +128,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
     /**
      * @inheritdoc IStakingManager
      */
-    function withdrawFunds(address payable _to) public onlyOwner {
+    function withdrawFunds(address payable _to) external onlyOwner {
         uint amount = address(this).balance;
         if(amount == 0) revert CantWithdrawZero();
         (bool sent, ) = _to.call{value: amount}("");

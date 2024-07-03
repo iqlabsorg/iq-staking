@@ -387,119 +387,119 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getLastClaimedTimestamp(address claimer) public view returns (uint256) {
+    function getLastClaimedTimestamp(address claimer) external view returns (uint256) {
         return _lastClaimedTimestamp[claimer];
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getOwnerOfStakedTokenId(uint256 tokenId) public view returns (address) {
+    function getOwnerOfStakedTokenId(uint256 tokenId) external view returns (address) {
         return _tokenOwners[tokenId];
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getStakedNftsByAddress(address staker) public view returns (uint256[] memory) {
+    function getStakedNftsByAddress(address staker) external view returns (uint256[] memory) {
         return _stakedTokens[staker];
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getClaimedTokensByAddress(address staker) public view returns (uint256) {
+    function getClaimedTokensByAddress(address staker) external view returns (uint256) {
         return _claimedTokens[staker];
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function hasClaimed(address staker) public view returns (bool) {
+    function hasClaimed(address staker) external view returns (bool) {
         return _claimedTokens[staker] != 0;
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function showMaxPoolSize() public view returns (uint256) {
+    function showMaxPoolSize() external view returns (uint256) {
         return _poolSize;
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function totalTokensClaimed() public view returns (uint256) {
+    function totalTokensClaimed() external view returns (uint256) {
         return _totalTokensClaimed;
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function totalTokensLeft() public view returns (uint256) {
+    function totalTokensLeft() external view returns (uint256) {
         return _totalTokensLeft;
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getRewardRate() public view returns (uint256) {
+    function getRewardRate() external view returns (uint256) {
         return _rewardRate;
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getRewardFrequency() public view returns (uint256) {
+    function getRewardFrequency() external view returns (uint256) {
         return _rewardFrequency;
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getRewardTokenAddress() public view returns (address) {
+    function getRewardTokenAddress() external view returns (address) {
         return address(_rewardToken);
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getNftCollectionAddress() public view returns (address) {
+    function getNftCollectionAddress() external view returns (address) {
         return address(_nftCollection);
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-     function getProofSourceAddress() public view returns (address) {
+     function getProofSourceAddress() external view returns (address) {
         return _proofSource;
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-     function getStakingManagerAddress() public view returns (address) {
+     function getStakingManagerAddress() external view returns (address) {
         return _stakingManager;
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function isStakingActive() public view returns (bool) {
+    function isStakingActive() external view returns (bool) {
         return _stakingActive;
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getClaimedDelay() public view returns (uint256) {
+    function getClaimedDelay() external view returns (uint256) {
         return _claimDelay;
     }
 
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getTotalAccruedReward() public view returns (uint256) {
+    function getTotalAccruedReward() external view returns (uint256) {
         return _totalRewardAccrued;
     }
 
