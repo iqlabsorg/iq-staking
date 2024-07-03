@@ -8,7 +8,8 @@ interface IIQNftStaking {
     error InvalidProofSourceAddress();
 
     /**
-     * @dev Thrown when the claim delay has not yet passed since the last claim by the claimer.
+     * @dev Thrown when a staker attempts to claim rewards before the next claimable timestamp.
+     * The staker must wait until the current block timestamp is greater than or equal to the nextClaimTimestamp.
      */
     error ClaimDelayNotPassed();
 
@@ -295,11 +296,11 @@ interface IIQNftStaking {
     function getProofSourceAddress() external view returns (address);
 
     /**
-     * @dev Get timestamp of last reward claim for specific address address.
+     * @dev Get the next claimable timestamp for the specified staker.
      * @param claimer The address to check.
-     * @return Proof source address.
+     * @return Timestamp when next claim will be available.
      */
-    function getLastClaimedTimestamp(address claimer) external view returns (uint256);
+    function getNextClaimTimestamp(address claimer) external view returns (uint256);
 
     /**
      * @dev Checks if staking is currently active.

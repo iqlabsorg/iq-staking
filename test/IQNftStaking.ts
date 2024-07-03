@@ -1112,10 +1112,32 @@ describe('Tokens Claiming Process', function () {
         .revertedWithCustomError(nftStaking, 'ClaimDelayNotPassed');
     });
 
-    it('getLastClaimedTimestamp should work correctly', async function () {
-
-      let firstClaimedAmount = BigInt(3000);
+    it('claimTokens should be rejected if claim goes right after the first stake', async function () {
+      // If the staker had no active stakes and stakes an NFT, the claim timer starts,
+      // and the nextClaimableTimestamp is set. Claiming right after staking should be rejected.
+      let minimalClaimAmount = BigInt(1);
       let claimDetailsString = "testString";
+
+      // Approve NFT
+      await nftCollection.connect(staker).approve(nftStaking, 1);
+      // Stake NFT
+      const signature = await generateStakeNftsSignature(nftStaking, stakingManager, proofSource, staker, [1]);
+      await stakingManager.connect(staker).stake(nftStaking, [1], signature);
+      // Try to claim tokens without waiting
+      await expect(signAndClaimTokens(nftStaking, proofSource, staker, minimalClaimAmount, claimDetailsString)).to.be
+        .revertedWithCustomError(nftStaking, 'ClaimDelayNotPassed');
+      // Wait for delay
+      await ethers.provider.send("evm_increaseTime", [3600]);
+      await ethers.provider.send("evm_mine");
+      // Try to claim again
+      await expect(signAndClaimTokens(nftStaking, proofSource, staker, minimalClaimAmount, claimDetailsString));
+    });
+
+    it('getNextClaimTimestamp should work correctly', async function () {
+
+      const firstClaimedAmount = BigInt(3000);
+      const claimDetailsString = "testString";
+      const claimDelay = 3600;
 
       // Backend verifies the number of NFTs staked, their staking duration, and calculates the claimable tokens.
       // If the claim exceeds the calculated amount, the signature will not be provided and the transaction will fail.
@@ -1125,13 +1147,14 @@ describe('Tokens Claiming Process', function () {
       expect(stakerErc20TokensBalance).to.equal(0);
 
       const signature = await generateClaimTokensSignature(nftStaking, proofSource, staker, firstClaimedAmount, claimDetailsString);
-      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
+      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp)+1;
 
-      expect(await nftStaking.connect(staker).claimTokens(staker, firstClaimedAmount, claimDetailsString, signature)).to.emit(nftStaking, 'TokensClaimed').withArgs(staker, firstClaimedAmount, currentTimestamp+1, claimDetailsString);
+      expect(await nftStaking.connect(staker).claimTokens(staker, firstClaimedAmount, claimDetailsString, signature)).to.emit(nftStaking, 'TokensClaimed').withArgs(staker, firstClaimedAmount, currentTimestamp, claimDetailsString);
 
-      // Check last claimed timestamp for claimer and for third-party address
-      expect(await nftStaking.getLastClaimedTimestamp(staker)).to.be.equal(currentTimestamp+1);
-      expect(await nftStaking.getLastClaimedTimestamp(deployer)).to.be.equal(0);
+      // Check nextClaimTimestamp for claimer
+      expect(await nftStaking.getNextClaimTimestamp(staker)).to.be.equal(currentTimestamp+claimDelay);
+      // Check nextClaimTimestamp for third-party address, that never staked token
+      expect(await nftStaking.getNextClaimTimestamp(deployer)).to.be.equal(0);
     });
 
     it('should revert if claimTokens is called by non-staker', async function () {

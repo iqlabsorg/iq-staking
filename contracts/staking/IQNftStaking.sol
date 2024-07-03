@@ -117,9 +117,9 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     uint256 private _claimDelay = 3600;
 
     /**
-     * @dev Indicates last claim timestamp for each user.
+     * @dev Indicates next claim timestamp for each user.
      */
-    mapping(address => uint256) private _lastClaimedTimestamp;
+    mapping(address => uint256) private _nextClaimTimestamp;
 
     /**
      * @dev Indicates the status of staking pool.
@@ -179,6 +179,8 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         if (msg.sender != _stakingManager) revert CallerIsNotStakingManager();
         if (!_stakingActive) revert StakingNotActive();
 
+        bool hasNoStakedTokens = _stakedTokens[staker].length == 0;
+
         // execute staking logic
         for (uint i = 0; i < tokenIds.length; ++i) {
             unchecked {
@@ -191,6 +193,10 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
                 _stakedTokenIndexes[tokenIds[i]] = _stakedTokens[staker].length - 1;
                 _tokenOwners[tokenIds[i]] = staker;
             }
+        }
+
+        if (hasNoStakedTokens) {
+            _nextClaimTimestamp[staker] = block.timestamp + _claimDelay;
         }
 
         // emit event
@@ -208,8 +214,8 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     ) external nonReentrant {
         // basic checks
         if (msg.sender != staker) revert UnauthorizedClaimAttempt();
-        if (_lastClaimedTimestamp[staker] + _claimDelay > block.timestamp) revert ClaimDelayNotPassed();
         if (amount == 0) revert CantClaimZero();
+        if (_nextClaimTimestamp[staker] > block.timestamp) revert ClaimDelayNotPassed();
         if (_totalTokensClaimed + amount > _poolSize) revert InsufficientPoolSize();
 
         // verify nonce
@@ -231,7 +237,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         _claimedTokens[staker] = _claimedTokens[staker] + amount;
         _totalTokensClaimed = _totalTokensClaimed + amount;
         _totalTokensLeft = _totalTokensLeft - amount;
-        _lastClaimedTimestamp[staker] = block.timestamp;
+        _nextClaimTimestamp[staker] = block.timestamp + _claimDelay;
 
         // safe transfer tokens to staker
         _rewardToken.safeTransfer(staker, amount);
@@ -393,8 +399,8 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getLastClaimedTimestamp(address claimer) external view returns (uint256) {
-        return _lastClaimedTimestamp[claimer];
+    function getNextClaimTimestamp(address claimer) external view returns (uint256) {
+        return _nextClaimTimestamp[claimer];
     }
 
     /**
