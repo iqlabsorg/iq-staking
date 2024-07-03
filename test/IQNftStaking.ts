@@ -551,7 +551,7 @@ describe('IQ NFT Staking Contract', function () {
       });
 
       it('Zero balance cant be withdrawed', async function () {
-        expect (await stakingManager.connect(deployer).withdrawFunds(staker)).to.revertedWithCustomError(stakingManager, "CantWithdrawZero");
+        expect (stakingManager.connect(deployer).withdrawFunds(staker)).to.revertedWithCustomError(stakingManager, "CantWithdrawZero");
       });
 
       it('withdrawFunds reverts if caller is not owner', async function () {
