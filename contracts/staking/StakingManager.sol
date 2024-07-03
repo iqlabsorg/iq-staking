@@ -132,7 +132,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
         uint amount = address(this).balance;
         if(amount == 0) revert CantWithdrawZero();
         (bool sent, ) = _to.call{value: amount}("");
-        require(sent, "Failed to send Ether");
+        if (!sent) revert FailedToSendEther();
         emit FundsWithdrawn(_to, amount);
     }
 

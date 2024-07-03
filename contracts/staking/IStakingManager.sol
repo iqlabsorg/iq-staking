@@ -21,6 +21,11 @@ interface IStakingManager {
     error InvalidProofSourceAddress();
 
     /**
+     * @notice Thrown when attemp to withdraw ether from contract failed.
+     */
+    error FailedToSendEther();
+
+    /**
      * @notice Emitted when user deploy IQ NFT Staking.
      */
     event NftStakingDeployed(address indexed stakingContract, address indexed owner, address proofSource, address nftCollectionAddress);
