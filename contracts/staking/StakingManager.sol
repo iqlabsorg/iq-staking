@@ -57,7 +57,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
     /**
      * @dev Stores backend address that will provide the signatures.
      */
-    address private _proofSource;
+    address immutable _proofSource;
 
     /**
      * @dev Constructor for the StakingManager contract.

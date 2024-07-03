@@ -58,7 +58,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     /**
      * @dev NFT collection for staking.
      */
-    IERC721 private _nftCollection;
+    IERC721 immutable _nftCollection;
 
     /**
      * @dev ERC20 reward token, that use for reward distribution.
@@ -68,7 +68,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     /**
      * @dev Indicates IQ signer account.
      */
-    address private _proofSource;
+    address immutable _proofSource;
 
     /**
      * @dev Indicates IQ Staking Manager address.
