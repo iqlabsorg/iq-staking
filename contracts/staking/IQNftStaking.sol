@@ -249,12 +249,10 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     ) external nonReentrant {
         // check that staker is the owner of the NFTs
         for (uint i = 0; i < tokenIds.length; ++i) {
-            unchecked {
-                // check that NFT is owned by this contract currently
-                if (_nftCollection.ownerOf(tokenIds[i]) != address(this)) revert NftNotStaked();
-                // check that staker is the owner of the NFT
-                if (_tokenOwners[tokenIds[i]] != msg.sender) revert NotTheOwnerOfNft();
-            }
+            // check that NFT is owned by this contract currently
+            if (_nftCollection.ownerOf(tokenIds[i]) != address(this)) revert NftNotStaked();
+            // check that staker is the owner of the NFT
+            if (_tokenOwners[tokenIds[i]] != msg.sender) revert NotTheOwnerOfNft();
         }
 
         // verify nonce
@@ -272,12 +270,10 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         require(_verifySignature(_proofSource, digest, signature));
 
         for (uint i = 0; i < tokenIds.length; ++i) {
-            unchecked {
-                // transfer NFT back to staker
-                _nftCollection.transferFrom(address(this), msg.sender, tokenIds[i]);
-                // remove NFT from staking
-                _removeNftFromStaking(msg.sender, tokenIds[i]);
-            }
+            // transfer NFT back to staker
+            _nftCollection.transferFrom(address(this), msg.sender, tokenIds[i]);
+            // remove NFT from staking
+            _removeNftFromStaking(msg.sender, tokenIds[i]);
         }
 
         // emit event
