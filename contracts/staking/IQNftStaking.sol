@@ -161,7 +161,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         address stakingManager,
         address nftCollectionAddress,
         address owner
-    ) EIP712("IQNftStaking", "1") {
+    ) payable EIP712("IQNftStaking", "1") {
         if (proofSource == address(0)) revert InvalidProofSourceAddress();
         _proofSource = proofSource;
         _stakingManager = stakingManager;

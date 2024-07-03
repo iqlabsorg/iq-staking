@@ -69,7 +69,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
         address proofSource,
         uint256 deploymentPrice,
         uint256 batchTransactionFee
-    ) EIP712("StakingManager", "1") {
+    ) payable EIP712("StakingManager", "1") {
         if (proofSource == address(0)) revert InvalidProofSourceAddress();
         _proofSource = proofSource;
         _deploymentPrice = deploymentPrice;
