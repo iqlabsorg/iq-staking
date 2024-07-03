@@ -509,8 +509,21 @@ describe('IQ NFT Staking Contract', function () {
         // Deploy contract without sending any ether
         const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
         expect (stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature))
-          .to.revertedWithCustomError(stakingManager, 'InsufficientEtherSent');
+          .to.revertedWithCustomError(stakingManager, 'IncorrectEtherSent');
         });
+
+      it('Reverts deployment if deployer sends more than enough ether', async function () {
+        // Set deployment price
+        const newDeploymentPrice = 1000;
+        await stakingManager.connect(deployer).setDeploymentPrice(newDeploymentPrice);
+        // Deploy contract without sending any ether
+        const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
+        await expect(
+          stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature, {
+              value: newDeploymentPrice+1
+          })
+      ).to.be.revertedWithCustomError(stakingManager, 'IncorrectEtherSent');
+      });
 
       it('Payment deployment works correctly', async function () {
         // Set deployment price

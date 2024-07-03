@@ -11,9 +11,9 @@ interface IStakingManager {
     error CantWithdrawZero();
 
     /**
-     * @notice Thrown when an attempt is made to send insufficient amount of ether to cover the fees.
+     * @notice Thrown when an attempt is made to send incorrect amount of ether to cover the fees.
      */
-    error InsufficientEtherSent();
+    error IncorrectEtherSent();
 
     /**
      * @notice Thrown when the address for proof verification is invalid.

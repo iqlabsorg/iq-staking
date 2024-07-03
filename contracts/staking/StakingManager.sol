@@ -81,7 +81,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      */
     function deployNftStaking(address proofSource, address nftCollectionAddress, bytes calldata signature) payable external returns (address) {
         // check msg.value is enough to cover deployment fee
-        if (msg.value < _deploymentPrice) revert InsufficientEtherSent();
+        if (msg.value != _deploymentPrice) revert IncorrectEtherSent();
 
         uint256 nonce = _useNonce(msg.sender);
 
@@ -106,7 +106,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
         // check msg.value is enough to cover transaction fee
         uint256 batchTransactionFee = _isIndividualBatchTransactionFeeActive[stakingContract] ? _individualBatchTransactionFee[stakingContract] : _batchTransactionFee;
         uint256 requiredFee = (tokenIds.length - 1) * batchTransactionFee;
-        if (msg.value < requiredFee) revert InsufficientEtherSent();
+        if (msg.value < requiredFee) revert IncorrectEtherSent();
 
         // verify nonce
         uint256 nonce = _useNonce(msg.sender);
