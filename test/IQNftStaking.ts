@@ -421,6 +421,7 @@ describe('IQ NFT Staking Contract', function () {
       proofSource: await proofSource.getAddress(),
       stakingManager: await stakingManager.getAddress(),
       nftCollectionAddress: (await nftCollection.getAddress()).toString(),
+      owner: (await deployer.getAddress()).toString(),
     })) as IQNftStaking;
   });
 
@@ -482,6 +483,23 @@ describe('IQ NFT Staking Contract', function () {
         .to.emit(stakingManager, 'NftStakingDeployed').withArgs(nftStakingAddress, deployer, proofSource, nftCollection)
 
         console.log(`IQ Nft Staking contract address: ${nftStakingAddress}`);
+      });
+
+      it('Staking get right owner after deployment', async function () {
+        const signature = await generateDeployNftStakingSignature(proofSource, deployer, stakingManager, nftCollection);
+        const txResponse = await stakingManager.connect(deployer).deployNftStaking(proofSource, nftCollection, signature);
+        // Get transaction receipt
+        const txReceipt = await txResponse.wait();
+        const nftStakingAddress = txReceipt.logs[0].address;
+        await expect(txResponse)
+        .to.emit(stakingManager, 'NftStakingDeployed').withArgs(nftStakingAddress, deployer, proofSource, nftCollection)
+
+        const nftStakingContract = await ethers.getContractAt("IQNftStaking", nftStakingAddress);
+
+        const nftStakingContractOwner = await nftStakingContract.owner();
+        const deployerAddress = await deployer.getAddress();
+
+        expect(nftStakingContractOwner).to.equal(deployerAddress);
       });
 
       it('Reverts deployment if deployer sends not enough ether', async function () {

@@ -94,7 +94,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
 
         require(_verifySignature(_proofSource, digest, signature));
 
-        IIQNftStaking stakingContract = new IQNftStaking(proofSource, address(this), nftCollectionAddress);
+        IIQNftStaking stakingContract = new IQNftStaking(proofSource, address(this), nftCollectionAddress, msg.sender);
         emit NftStakingDeployed(address(stakingContract), msg.sender, proofSource, nftCollectionAddress);
         return address(stakingContract);
     }
