@@ -133,6 +133,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
         if(amount == 0) revert CantWithdrawZero();
         (bool sent, ) = _to.call{value: amount}("");
         require(sent, "Failed to send Ether");
+        emit FundsWithdrawn(_to, amount);
     }
 
     /**
@@ -140,6 +141,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      */
     function setDeploymentPrice(uint256 deploymentFee) external onlyOwner {
         _deploymentPrice = deploymentFee;
+        emit DeploymentPriceSet(deploymentFee);
     }
 
     /**
@@ -147,6 +149,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      */
     function setBatchTransactionFee(uint256 batchTransactionFee) external onlyOwner {
         _batchTransactionFee = batchTransactionFee;
+        emit BatchTransactionFeeSet(batchTransactionFee);
     }
 
     /**
@@ -155,6 +158,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
     function setIndividualContractBatchTransactionFee(address stakingContract, uint256 batchTransactionFee) external onlyOwner {
         _individualBatchTransactionFee[stakingContract] = batchTransactionFee;
         _isIndividualBatchTransactionFeeActive[stakingContract] = true;
+        emit IndividualContractBatchTransactionFeeSet(stakingContract, batchTransactionFee);
     }
 
     /**
@@ -162,6 +166,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      */
     function deactivateIndividualContractBatchTransactionFee(address stakingContract) external onlyOwner {
         _isIndividualBatchTransactionFeeActive[stakingContract] = false;
+        emit IndividualContractBatchTransactionFeeDeactivated(stakingContract);
     }
 
     /**
@@ -169,6 +174,7 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
      */
     function setStakingManager(address stakingContract, address stakingManager) external onlyOwner {
         IIQNftStaking(stakingContract).setStakingManager(stakingManager);
+        emit StakingManagerUpdated(stakingContract, stakingManager);
     }
 
     /**

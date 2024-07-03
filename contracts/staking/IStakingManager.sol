@@ -26,6 +26,45 @@ interface IStakingManager {
     event NftStakingDeployed(address indexed stakingContract, address indexed owner, address proofSource, address nftCollectionAddress);
 
     /**
+     * @dev Emitted when the deployment price is set.
+     * @param newDeploymentPrice Deployment price.
+     */
+    event DeploymentPriceSet(uint256 newDeploymentPrice);
+
+    /**
+     * @dev Emitted when the batch transaction fee is set.
+     * @param newBatchTransactionFee Batch transaction fee.
+     */
+    event BatchTransactionFeeSet(uint256 newBatchTransactionFee);
+
+    /**
+     * @dev Emitted when the individual contract batch transaction fee is set.
+     * @param stakingContract The address of the staking contract.
+     * @param newBatchTransactionFee The new batch transaction fee.
+     */
+    event IndividualContractBatchTransactionFeeSet(address indexed stakingContract, uint256 newBatchTransactionFee);
+
+    /**
+     * @dev Emitted when the new StakingManager is set for existing IQNftStaking contract.
+     * @param stakingContract The address of the staking contract.
+     * @param newStakingManager The new StakingManager address.
+     */
+    event StakingManagerUpdated(address indexed stakingContract, address newStakingManager);
+
+    /**
+     * @dev Emitted when funds are withdrawn from the contract.
+     * @param to The address to which the funds were sent.
+     * @param amount Withdrawn amount.
+     */
+    event FundsWithdrawn(address indexed to, uint256 amount);
+
+    /**
+     * @dev Emitted when the individual contract batch transaction fee is deactivated.
+     * @param stakingContract The address of the staking contract.
+     */
+    event IndividualContractBatchTransactionFeeDeactivated(address indexed stakingContract);
+
+    /**
      * @dev Deploy IQNftStaking contract.
      * @param proofSource Backend address.
      * @param nftCollectionAddress ERC721 collection address.

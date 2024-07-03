@@ -430,14 +430,16 @@ describe('IQ NFT Staking Contract', function () {
       it('setDeploymentPrice and setDeploymentPrice works correctly', async function () {
         expect(await stakingManager.getDeploymentPrice()).to.equal(0);
         const newDeploymentPrice = 1000;
-        await stakingManager.connect(deployer).setDeploymentPrice(newDeploymentPrice);
+        expect(await stakingManager.connect(deployer).setDeploymentPrice(newDeploymentPrice))
+          .to.emit(stakingManager, "DeploymentPriceSet").withArgs("newDeploymentPrice");
         expect(await stakingManager.getDeploymentPrice()).to.equal(newDeploymentPrice);
       });
 
       it('setBatchTransactionFee and getBatchTransactionFee works correctly', async function () {
         expect(await stakingManager.getBatchTransactionFee()).to.equal(0);
         const newBatchTransactionFee = 20000;
-        await stakingManager.connect(deployer).setBatchTransactionFee(newBatchTransactionFee);
+        expect(await stakingManager.connect(deployer).setBatchTransactionFee(newBatchTransactionFee))
+          .to.emit(stakingManager, "BatchTransactionFeeSet").withArgs("newBatchTransactionFee");
         expect(await stakingManager.getBatchTransactionFee()).to.equal(newBatchTransactionFee);
       });
 
@@ -445,7 +447,8 @@ describe('IQ NFT Staking Contract', function () {
         expect(await stakingManager.getIndividualBatchTransactionFee(nftStaking)).to.equal(0);
 
         const individualBatchTransactionFee = 30000;
-        await stakingManager.connect(deployer).setIndividualContractBatchTransactionFee(nftStaking, individualBatchTransactionFee);
+        expect(await stakingManager.connect(deployer).setIndividualContractBatchTransactionFee(nftStaking, individualBatchTransactionFee))
+          .to.emit(stakingManager, "IndividualContractBatchTransactionFeeSet").withArgs(nftStaking, individualBatchTransactionFee);
 
         expect(await stakingManager.getIndividualBatchTransactionFee(nftStaking)).to.equal(individualBatchTransactionFee);
         expect(await stakingManager.isIndividualBatchTransactionFeeActive(nftStaking)).to.equal(true);
@@ -459,7 +462,8 @@ describe('IQ NFT Staking Contract', function () {
         expect(await stakingManager.getIndividualBatchTransactionFee(nftStaking)).to.equal(individualBatchTransactionFee);
         expect(await stakingManager.isIndividualBatchTransactionFeeActive(nftStaking)).to.equal(true);
 
-        await stakingManager.connect(deployer).deactivateIndividualContractBatchTransactionFee(nftStaking);
+        expect(await stakingManager.connect(deployer).deactivateIndividualContractBatchTransactionFee(nftStaking))
+          .to.emit(stakingManager, "IndividualContractBatchTransactionFeeDeactivated").withArgs(nftStaking);
 
         expect(await stakingManager.getIndividualBatchTransactionFee(nftStaking)).to.equal(individualBatchTransactionFee);
         expect(await stakingManager.isIndividualBatchTransactionFeeActive(nftStaking)).to.equal(false);
@@ -546,7 +550,9 @@ describe('IQ NFT Staking Contract', function () {
         expect(await stakingManager.getBalance()).to.equal(newDeploymentPrice);
         // Withdraw balance to third-party account
         const userBalanceBeforeWithdrawal = await ethers.provider.getBalance(staker)
-        await stakingManager.connect(deployer).withdrawFunds(staker);
+        // Check emit data and amount of withdrawed tokens
+        expect(await stakingManager.connect(deployer).withdrawFunds(staker))
+          .to.emit(stakingManager, "FundsWithdrawn").withArgs(staker, newDeploymentPrice);
         expect(await ethers.provider.getBalance(staker)).to.equal(userBalanceBeforeWithdrawal+newDeploymentPrice)
       });
 
@@ -563,6 +569,11 @@ describe('IQ NFT Staking Contract', function () {
 
         await expect(stakingManager.connect(staker).withdrawFunds(staker))
           .to.be.revertedWith("Ownable: caller is not the owner");
+      });
+
+      it('setStakingManager emit correct event on StakingManager side', async function () {
+        await expect(stakingManager.connect(deployer).setStakingManager(nftStaking, newStakingManager))
+          .to.emit(stakingManager, "StakingManagerUpdated").withArgs(nftStaking,newStakingManager);
       });
 
       it('setStakingManager reverts if caller is not owner', async function () {
