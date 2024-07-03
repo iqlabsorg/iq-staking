@@ -205,7 +205,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         uint256 amount,
         string memory claimDetails,
         bytes calldata signature
-    ) external {
+    ) external nonReentrant {
         // basic checks
         if (_lastClaimedTimestamp[staker] + _claimDelay > block.timestamp) revert ClaimDelayNotPassed();
         if (amount == 0) revert CantClaimZero();
@@ -226,14 +226,15 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         // verify that signature from backend is correct
         require(_verifySignature(_proofSource, digest, signature));
 
-        // safe transfer tokens to staker
-        _rewardToken.safeTransfer(staker, amount);
-
         // execute claim logic
         _claimedTokens[staker] = _claimedTokens[staker] + amount;
         _totalTokensClaimed = _totalTokensClaimed + amount;
         _totalTokensLeft = _totalTokensLeft - amount;
         _lastClaimedTimestamp[staker] = block.timestamp;
+
+        // safe transfer tokens to staker
+        _rewardToken.safeTransfer(staker, amount);
+
 
         // emit event
         emit TokensClaimed(staker, amount, block.timestamp, claimDetails);
