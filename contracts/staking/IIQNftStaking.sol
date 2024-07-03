@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 interface IIQNftStaking {
-
     /**
      * @dev Thrown when the address for proof verification is invalid.
      */
@@ -136,8 +135,9 @@ interface IIQNftStaking {
     /**
      * @notice Emitted when staking is deactivated.
      * @param timestamp The timestamp when staking was deactivated.
+     * @param totalRewardAccrued Quantity of tokens that users have earned and cannot be withdrawn by staking owner.
      */
-    event StakingDeactivated(uint256 timestamp);
+    event StakingDeactivated(uint256 timestamp, uint256 totalRewardAccrued);
 
     /**
      * @notice Emitted when reward tokens was withdrawed by staking pool owner.
@@ -309,10 +309,15 @@ interface IIQNftStaking {
     function getClaimedDelay() external view returns (uint256);
 
     /**
+     * @dev Indicates total amount of accrued rewards for staked tokens.
+     * Used for scenario, when pool owner terminates staking.
+     */
+    function getTotalAccruedReward() external view returns (uint256);
+
+    /**
      * @dev Returns the nonce counter for a given address, which can be used to prevent replay attacks.
      * @param reserver The address for which the nonce counter is being queried.
      * @return The current nonce for the given address.
      */
     function nonceCounter(address reserver) external view returns (uint256);
-
 }

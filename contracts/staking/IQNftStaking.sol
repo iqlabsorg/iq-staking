@@ -370,7 +370,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
         _stakingActive = false;
         _totalRewardAccrued = totalRewardAccrued;
 
-        emit StakingDeactivated(block.timestamp);
+        emit StakingDeactivated(block.timestamp, _totalRewardAccrued);
     }
 
     /**
@@ -494,6 +494,13 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
      */
     function getClaimedDelay() public view returns (uint256) {
         return _claimDelay;
+    }
+
+    /**
+     * @inheritdoc IIQNftStaking
+     */
+    function getTotalAccruedReward() public view returns (uint256) {
+        return _totalRewardAccrued;
     }
 
     /**

@@ -696,7 +696,21 @@ describe('IQ NFT Staking Contract', function () {
       const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
 
       await expect(nftStaking.connect(deployer).deactivateStaking(POOL_SIZE, signature)).to.emit(nftStaking,
-      "StakingDeactivated").withArgs(currentTimestamp+1)
+      "StakingDeactivated").withArgs(currentTimestamp+1,POOL_SIZE)
+    });
+
+    it('getTotalAccruedReward works correctly', async function () {
+
+      const totalRewardAccrued = 100000;
+
+      await nftStaking.connect(deployer).depositRewardTokens(rewardToken, POOL_SIZE, REWARD_RATE, REWARD_FREQUENCY) ;
+      const signature = await generateDeactivateStakingSignature(nftStaking, proofSource, deployer, totalRewardAccrued);
+      const currentTimestamp = await ethers.provider.getBlock('latest').then(b => b.timestamp);
+
+      await expect(nftStaking.connect(deployer).deactivateStaking(totalRewardAccrued, signature)).to.emit(nftStaking,
+      "StakingDeactivated").withArgs(currentTimestamp+1,totalRewardAccrued)
+
+      expect(await nftStaking.getTotalAccruedReward()).to.equals(totalRewardAccrued);
     });
 
 
