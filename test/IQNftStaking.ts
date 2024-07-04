@@ -311,6 +311,7 @@ async function generateDeployNftStakingSignature(
   nftCtolletion: ERC721Mock,
 ): Promise<string> {
   const proofSourceAddress = await proofSource.getAddress();
+  const deployerAddress = await deployer.getAddress();
   const nftCtolletionAddress = await nftCtolletion.getAddress();
   const nonce = await stakingManager.nonceCounter(deployer);
 
@@ -325,6 +326,7 @@ async function generateDeployNftStakingSignature(
     DeployNftStaking: [
       { name: 'proofSource', type: 'address' },
       { name: 'nftCollectionAddress', type: 'address' },
+      { name: 'deployer', type: 'address' },
       { name: 'nonce', type: 'uint256' },
     ],
   };
@@ -332,6 +334,7 @@ async function generateDeployNftStakingSignature(
   const message = {
     proofSource: proofSourceAddress,
     nftCollectionAddress: nftCtolletionAddress,
+    deployer: deployerAddress,
     nonce: nonce.toString(),
   };
 
