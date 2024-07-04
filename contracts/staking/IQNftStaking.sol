@@ -114,7 +114,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     /**
      * @dev Indicates delay in seconds for claim transaction.
      */
-    uint256 private _claimDelay = 3600;
+    uint256 constant _claimDelay = 3600;
 
     /**
      * @dev Indicates next claim timestamp for each user.
