@@ -14,10 +14,10 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
 
     /**
      * @dev EIP-712 type hash for securely IQNFTStaking deployment.
-     * This type hash includes the proofSource address, the nft collection address, and a nonce for replay protection.
+     * This type hash includes the proofSource address, the nft collection address, msg.sender address and a nonce for replay protection.
      */
     bytes32 private constant DEPLOY_IQ_NFT_STAKING_TYPEHASH = keccak256(
-        "DeployNftStaking(address proofSource,address nftCollectionAddress,uint256 nonce)"
+        "DeployNftStaking(address proofSource,address nftCollectionAddress,address deployer,uint256 nonce)"
     );
 
     /**
@@ -84,18 +84,20 @@ contract StakingManager is IStakingManager, EIP712, Ownable2Step {
         if (msg.value != _deploymentPrice) revert IncorrectEtherSent();
 
         uint256 nonce = _useNonce(msg.sender);
+        address deployer = msg.sender;
 
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
             DEPLOY_IQ_NFT_STAKING_TYPEHASH,
             proofSource,
             nftCollectionAddress,
+            deployer,
             nonce
         )));
 
         require(_verifySignature(_proofSource, digest, signature));
 
-        IIQNftStaking stakingContract = new IQNftStaking(proofSource, address(this), nftCollectionAddress, msg.sender);
-        emit NftStakingDeployed(address(stakingContract), msg.sender, proofSource, nftCollectionAddress);
+        IIQNftStaking stakingContract = new IQNftStaking(proofSource, address(this), nftCollectionAddress, deployer);
+        emit NftStakingDeployed(address(stakingContract), deployer, proofSource, nftCollectionAddress);
         return address(stakingContract);
     }
 

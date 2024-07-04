@@ -504,7 +504,7 @@ contract IQNftStaking is IIQNftStaking, EIP712, Multicall, Ownable2Step, Reentra
     /**
      * @inheritdoc IIQNftStaking
      */
-    function getClaimedDelay() external view returns (uint256) {
+    function getClaimedDelay() external pure returns (uint256) {
         return _claimDelay;
     }
 
