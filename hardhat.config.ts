@@ -10,15 +10,13 @@ import * as dotenv from 'dotenv';
 
 const env = dotenv.config();
 
-// import tasks here';
+// import tasks here
 import './tasks/deploy-nft-staking';
 import './tasks/deploy-nft-mock';
 import './tasks/deploy-token-mock';
 import './tasks/deploy-staking-manager';
 
-
-
-const DEPLOYMENT_PRIVATE_KEY = env.parsed?.DEPLOYMENT_PRIVATE_KEY;
+const DEPLOYMENT_PRIVATE_KEY = process.env.DEPLOYMENT_PRIVATE_KEY;
 const accounts = DEPLOYMENT_PRIVATE_KEY ? [DEPLOYMENT_PRIVATE_KEY] : [];
 
 const config: HardhatUserConfig = {
@@ -40,27 +38,27 @@ const config: HardhatUserConfig = {
   },
   networks: {
     ethereum: {
-      url: `https://rpc.ankr.com/eth/${env.parsed?.ANKR_PROJECT_KEY}`,
+      url: `https://rpc.ankr.com/eth/${process.env.ANKR_PROJECT_KEY}`,
       accounts,
       timeout: 40000,
     },
     sepolia: {
-      url: `https://rpc.ankr.com/eth_sepolia/${env.parsed?.ANKR_PROJECT_KEY}`,
+      url: `https://rpc.ankr.com/eth_sepolia/${process.env.ANKR_PROJECT_KEY}`,
       accounts,
       timeout: 40000,
     },
     mumbai: {
-      url: `https://rpc.ankr.com/polygon_mumbai/${env.parsed?.ANKR_PROJECT_KEY}`,
+      url: `https://rpc.ankr.com/polygon_mumbai/${process.env.ANKR_PROJECT_KEY}`,
       accounts,
       timeout: 40000,
     },
     polygon: {
-      url: `https://rpc.ankr.com/polygon/${env.parsed?.ANKR_PROJECT_KEY}`,
+      url: `https://rpc.ankr.com/polygon/${process.env.ANKR_PROJECT_KEY}`,
       accounts,
       timeout: 40000,
     },
     amoy: {
-      url: `https://polygon-amoy.g.alchemy.com/v2/${env.parsed?.ALCHEMY_URL}`,
+      url: `https://polygon-amoy.g.alchemy.com/v2/${process.env.ALCHEMY_URL}`,
       accounts,
       timeout: 40000,
     },
@@ -69,10 +67,29 @@ const config: HardhatUserConfig = {
       accounts,
       timeout: 40000,
     },
+    arbitrumSepolia: {
+      url: `https://arb-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_URL}`,
+      accounts,
+      timeout: 40000,
+    },
   },
   etherscan: {
     apiKey: env.parsed?.ETHERSCAN_API_KEY,
+    // apiKey: process.env.ETHERSCAN_API_KEY,
+
+    // apiKey: {
+    //   arbitrumSepolia: "3SAKKF6CCEV9TW8JBJP9TERTY2U6NQHGHT",
+    // },
+
     customChains: [
+      {
+        network: 'arbitrumSepolia',
+        chainId: 421614,
+        urls: {
+          apiURL: 'https://api-sepolia.arbiscan.io/api',
+          browserURL: 'https://sepolia.arbiscan.io/',
+        }
+      },
       {
         network: "ancient8Testnet",
         chainId: 28122024,
@@ -92,9 +109,7 @@ const config: HardhatUserConfig = {
     ]
   },
   sourcify: {
-    // Disabled by default
-    // Doesn't need an API key
-    enabled: false,
+    enabled: true,
   },
   gasReporter: {
     enabled: env.parsed?.REPORT_GAS !== undefined,
@@ -105,7 +120,6 @@ const config: HardhatUserConfig = {
     tests: './test',
     cache: './cache',
     artifacts: './artifacts',
-    // cache: './node_modules/@openzeppelin/contracts-upgradeable',
   },
   external: {
     contracts: [
