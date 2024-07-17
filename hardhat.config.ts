@@ -74,13 +74,11 @@ const config: HardhatUserConfig = {
     },
   },
   etherscan: {
-    apiKey: env.parsed?.ETHERSCAN_API_KEY,
-    // apiKey: process.env.ETHERSCAN_API_KEY,
-
-    // apiKey: {
-    //   arbitrumSepolia: "3SAKKF6CCEV9TW8JBJP9TERTY2U6NQHGHT",
-    // },
-
+    apiKey: {
+      arbitrumOne: env.parsed?.ETHERSCAN_API_KEY_ARB,
+      amoy: env.parsed?.ETHERSCAN_API_KEY_POLYGON,
+      arbitrumSepolia: env.parsed?.ETHERSCAN_API_KEY_ARB,
+    },
     customChains: [
       {
         network: 'arbitrumSepolia',
