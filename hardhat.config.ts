@@ -69,9 +69,18 @@ const config: HardhatUserConfig = {
       accounts,
       timeout: 40000,
     },
+    arbitrumOne: {
+      url: `https://arb-mainnet.g.alchemy.com/v2/${env.parsed?.ALCHEMY_URL}`,
+      accounts,
+      timeout: 40000,
+    },
   },
   etherscan: {
-    apiKey: env.parsed?.ETHERSCAN_API_KEY,
+    apiKey: {
+      arbitrumOne: env.parsed?.ETHERSCAN_API_KEY_ARB,
+      amoy: env.parsed?.ETHERSCAN_API_KEY_POLYGON,
+      arbitrumSepolia: env.parsed?.ETHERSCAN_API_KEY_ARB,
+    },
     customChains: [
       {
         network: "ancient8Testnet",
@@ -87,6 +96,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: 'https://api-amoy.polygonscan.com/api',
           browserURL: 'https://amoy.polygonscan.com',
+        }
+      },
+      {
+        network: "arbitrumOne",
+        chainId: 42161,
+        urls: {
+          apiURL: 'https://api.arbiscan.io/api',
+          browserURL: 'https://arbiscan.io',
         }
       }
     ]
