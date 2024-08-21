@@ -74,6 +74,11 @@ const config: HardhatUserConfig = {
       accounts,
       timeout: 40000,
     },
+    arbitrumSepolia: {
+      url: `https://arb-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_URL}`,
+      accounts,
+      timeout: 40000,
+    },
   },
   etherscan: {
     apiKey: {
@@ -82,6 +87,14 @@ const config: HardhatUserConfig = {
       arbitrumSepolia: env.parsed?.ETHERSCAN_API_KEY_ARB,
     },
     customChains: [
+      {
+        network: 'arbitrumSepolia',
+        chainId: 421614,
+        urls: {
+          apiURL: 'https://api-sepolia.arbiscan.io/api',
+          browserURL: 'https://sepolia.arbiscan.io/',
+        }
+      },
       {
         network: "ancient8Testnet",
         chainId: 28122024,
